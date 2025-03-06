@@ -1,0 +1,4 @@
+../Core/Src/sensor.c:33:7:ieee754_to_float	24	static
+../Core/Src/sensor.c:54:7:read_ph_fuvitech	24	static
+../Core/Src/sensor.c:62:7:read_ec_fuvitech	24	static
+../Core/Src/sensor.c:70:6:read_sensor	8	static

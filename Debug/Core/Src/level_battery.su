@@ -1,0 +1,2 @@
+../Core/Src/level_battery.c:20:7:map	32	static
+../Core/Src/level_battery.c:24:7:read_level_pin	16	static
