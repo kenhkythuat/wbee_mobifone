@@ -1,1 +1,0 @@
-../Core/Src/convert_data_uart.c:24:6:HAL_UARTEx_RxEventCallback	16	static
