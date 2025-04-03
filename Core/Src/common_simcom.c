@@ -80,6 +80,7 @@ void enable_simcom(void) {
   HAL_GPIO_WritePin(PWRKEY_SIMCOM_GPIO_Port, PWRKEY_SIMCOM_Pin, GPIO_PIN_RESET);
   HAL_Delay(4000);
 #else
+  HAL_GPIO_WritePin(GPIOA, ENABLE_SENSOR_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(PWRKEY_SIMCOM_GPIO_Port, PWRKEY_SIMCOM_Pin, GPIO_PIN_SET);
   HAL_Delay(3300);
   HAL_GPIO_WritePin(PWRKEY_SIMCOM_GPIO_Port, PWRKEY_SIMCOM_Pin, GPIO_PIN_RESET);
@@ -155,6 +156,7 @@ bool wait_for_pb_done_event(void) {
       if (strstr((char *)rx_data_sim, "PB DONE")) {
         send_to_simcom_a76xx("ATE0\r\n");
         HAL_Delay(200);
+        HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin, GPIO_PIN_SET);
         return true;
       }
     }
@@ -442,8 +444,7 @@ bool publish_mqtt_via_gsm(void) {
   send_to_simcom_a76xx(array_at_command);
   HAL_Delay(400);
   if (strstr((char *)rx_data_sim, "OK") != NULL) {
-    printf("----------------- Sent input the topic of a publish message "
-           "success ! ------------------\n");
+    printf("----- Sent input the topic of a publish message success ! ---------\n");
     is_at_topic_puplish_mqtt = true;
   } else {
     printf("----------------- Sent input the topic of a publish message fail "

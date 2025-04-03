@@ -25,7 +25,8 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
   if (huart->Instance == USART1) {
     printf("\r\nSIMCOM Response:");
     printf(rx_buffer);
-    snprintf(rx_buffer, sizeof(rx_buffer), "%s", rx_data_sim);
+    snprintf(rx_data_sim, sizeof(rx_buffer), "%s", rx_buffer);
+    HAL_UARTEx_ReceiveToIdle_IT(&huart1, (uint8_t *)rx_buffer, 700);
   }
   if (huart->Instance == USART2) {
     // sensor EC
@@ -33,7 +34,8 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
   }
   if (huart->Instance == UART4) {
     // sensor PH
-    HAL_UARTEx_ReceiveToIdle_IT(&huart2, (uint8_t *)rx_buffer_ph, 20);
+    HAL_UARTEx_ReceiveToIdle_IT(&huart4, (uint8_t *)rx_buffer_ph, 20);
   }
-  HAL_UARTEx_ReceiveToIdle_IT(&huart1, (uint8_t *)rx_buffer, 700);
+  memset(rx_buffer, '\0', 700);
+
 }

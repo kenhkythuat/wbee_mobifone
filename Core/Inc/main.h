@@ -92,14 +92,17 @@ void check_handle_state(enum GmsModemState status);
 bool wait_for_pb_done_event(void);
 bool check_signal_simcom(void);
 float read_level_pin(void);
+void read_sensor(void);
 
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define PWRKEY_SIMCOM_Pin GPIO_PIN_4
-#define PWRKEY_SIMCOM_GPIO_Port GPIOA
+#define ENABLE_SENSOR_Pin GPIO_PIN_4
+#define ENABLE_SENSOR_GPIO_Port GPIOA
 #define LED_STATUS_Pin GPIO_PIN_12
 #define LED_STATUS_GPIO_Port GPIOB
+#define PWRKEY_SIMCOM_Pin GPIO_PIN_11
+#define PWRKEY_SIMCOM_GPIO_Port GPIOA
 
 /* USER CODE BEGIN Private defines */
 

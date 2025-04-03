@@ -17,4 +17,5 @@ AlwaysBreakAfterDefinitionReturnType: None
 AlwaysBreakBeforeMultilineStrings: false
 SeparateDefinitionBlocks: Always
 ColumnLimit: 150
+BreakStringLiterals: false
 #AllowShortStringsOnASingleLine: true
