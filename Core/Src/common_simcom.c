@@ -15,6 +15,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 extern UART_HandleTypeDef huart1;
+extern TIM_HandleTypeDef htim6;
 
 /* USER CODE BEGIN 0 */
 char rx_data_sim[700];
@@ -56,9 +57,23 @@ bool to_send_status_to_server = false;
 
 /* USER CODE END 0 */
 
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+  if (htim->Instance == htim6.Instance) {
+    if (current_status_simcom == MqttReady) {
+      frequency_1hz++;
+      if (frequency_1hz >= INTERVAL_PUPLISH_DATA) {
+        to_send_status_to_server = 1;
+        frequency_1hz = 0;
+        printf("Case error log total :%d\r\n", total_errors);
+      }
+    }
+  }
+  HAL_TIM_Base_Start_IT(&htim6);
+}
+
 void send_to_simcom_a76xx(char *cmd) {
   printf("STM32 Write: %s", cmd);
-  HAL_UART_Transmit(&huart1, (uint8_t *)cmd, strlen(cmd), 1000);
+  HAL_UART_Transmit(&huart1, (uint8_t *)cmd, strlen(cmd), 1200);
 }
 
 void restart_stm32(void) {
@@ -387,13 +402,28 @@ void create_JSON(void) {
   cJSON_AddNumberToObject(json, "_gsm_signal_strength", rssi);
   cJSON_AddNumberToObject(json, "_battery_level", data_percentage_pin);
   // data PH Fuvitech
-  cJSON_AddNumberToObject(json, "solPH", data_measured_ph_fuvitech);
-  cJSON_AddNumberToObject(json, "solT", data_temperature_ph_fuvitech);
-  // data EC Fuvitech
-  cJSON_AddNumberToObject(json, "solEC", data_conductivity_ec_fuvitech);
-  cJSON_AddNumberToObject(json, "solTDS", data_tds_ec_fuvitech);
-  cJSON_AddNumberToObject(json, "solRes", data_resistivity_ec_fuvitech);
-  cJSON_AddNumberToObject(json, "solSal", data_salinity_ec_fuvitech);
+  char data_measured_ph_fuvitech_str[16];
+  char data_temperature_ph_fuvitech_str[16];
+
+  char data_conductivity_ec_fuvitech_str[16];
+  char data_tds_ec_fuvitech_str[16];
+  char data_resistivity_ec_fuvitech_str[16];
+  char data_salinity_ec_fuvitech_str[16];
+
+  snprintf(data_measured_ph_fuvitech_str, sizeof(data_measured_ph_fuvitech_str), "%.2f", data_measured_ph_fuvitech);
+  snprintf(data_temperature_ph_fuvitech_str, sizeof(data_temperature_ph_fuvitech_str), "%.2f", data_temperature_ph_fuvitech);
+
+  snprintf(data_conductivity_ec_fuvitech_str, sizeof(data_conductivity_ec_fuvitech_str), "%.2f", data_conductivity_ec_fuvitech);
+  snprintf(data_tds_ec_fuvitech_str, sizeof(data_tds_ec_fuvitech_str), "%.2f", data_tds_ec_fuvitech);
+  snprintf(data_resistivity_ec_fuvitech_str, sizeof(data_resistivity_ec_fuvitech_str), "%.2f", data_resistivity_ec_fuvitech);
+  snprintf(data_salinity_ec_fuvitech_str, sizeof(data_salinity_ec_fuvitech_str), "%.2f", data_salinity_ec_fuvitech);
+  cJSON_AddStringToObject(json, "solPH", data_measured_ph_fuvitech_str);
+  cJSON_AddStringToObject(json, "solT", data_temperature_ph_fuvitech_str);
+  //   data EC Fuvitech
+  cJSON_AddStringToObject(json, "solEC", data_conductivity_ec_fuvitech_str);
+  cJSON_AddStringToObject(json, "solTDS", data_tds_ec_fuvitech_str);
+  cJSON_AddStringToObject(json, "solRes", data_resistivity_ec_fuvitech_str);
+  cJSON_AddStringToObject(json, "solSal", data_salinity_ec_fuvitech_str);
   char *json_string = cJSON_PrintUnformatted(json);
   if (json_string == NULL) {
     printf("New create error JSON\n");
@@ -444,10 +474,10 @@ bool publish_mqtt_via_gsm(void) {
   send_to_simcom_a76xx(array_at_command);
   HAL_Delay(400);
   if (strstr((char *)rx_data_sim, "OK") != NULL) {
-    printf("----- Sent input the topic of a publish message success ! ---------\n");
+    printf("\r\n----- Sent input the topic of a publish message success ! ---------\n");
     is_at_topic_puplish_mqtt = true;
   } else {
-    printf("----------------- Sent input the topic of a publish message fail "
+    printf("\r\n----------------- Sent input the topic of a publish message fail "
            "!------------------\n");
     is_at_topic_puplish_mqtt = false;
   }
@@ -458,20 +488,20 @@ bool publish_mqtt_via_gsm(void) {
     send_to_simcom_a76xx(array_at_command);
     HAL_Delay(400);
     send_to_simcom_a76xx(array_json);
-    HAL_Delay(400);
+    HAL_Delay(600);
     if (strstr((char *)rx_data_sim, "OK") != NULL) {
-      printf("----------------- Sent input the message body of a publish "
+      printf("\r\n----------------- Sent input the message body of a publish "
              "message ! ------------------\n");
       is_at_data_puplish_mqtt = true;
     } else {
-      printf("--- Sent input the message body of a publish fail! "
+      printf("\r\n--- Sent input the message body of a publish fail! "
              "--------\n");
       is_at_data_puplish_mqtt = false;
     }
     if (is_at_data_puplish_mqtt) {
       send_to_simcom_a76xx("AT+CMQTTPUB=0,1,60\r\n");
-      HAL_Delay(1000);
-      if (strstr((char *)rx_data_sim, "+CMQTTPUB: 0,0") != NULL) {
+      HAL_Delay(2000);
+      if (strstr((char *)rx_data_sim, "+CMQTTPUB: 0,0") || strstr((char *)rx_data_sim, "OK") != NULL) {
         printf("-----------------Publish Success !------------------\n");
         is_at_puplish_mqtt = true;
         return true;
@@ -605,6 +635,7 @@ void check_handle_state(enum GmsModemState status) {
   }
   case MqttReady: {
     if (to_send_status_to_server) {
+      read_sensor();
       is_updated_status = send_payload_signal_to_server();
       if (is_updated_status) {
         to_send_status_to_server = 0;

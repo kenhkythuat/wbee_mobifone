@@ -64,6 +64,7 @@ extern char rx_data_sim[700];
 extern char array_json[400];
 extern char rx_buffer_ec[20];
 extern char rx_buffer_ph[20];
+extern char rx_buffer_do[100];
 extern float data_ph_fuvitech;
 extern uint32_t adc_pin_valve;
 extern float data_percentage_pin;

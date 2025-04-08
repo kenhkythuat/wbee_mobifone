@@ -17,8 +17,8 @@
 
 #define VERSION_MANTIS "1.0"
 
-//#define FARM "gateway-agriconnect"
-#define FARM "demox"
+#define FARM "gateway-agriconnect"
+//#define FARM "demox"
 
 #define a7672s 1  // 4G
 #define a7670c 2  // 4G
@@ -34,7 +34,7 @@
 
 // Serial number. Must be lower case.
 #ifndef SERIAL_NUMBER
-  #define SERIAL_NUMBER "hb000019"
+  #define SERIAL_NUMBER "hb000999"
 #endif
 
 #define true 1
@@ -42,14 +42,15 @@
 
 #define ph_fuvitech true
 #define ec_fuvitech true
+#define do_fuvitech true
 
-#define MQTT_USER "node" 		// User - connect to MQTT broker
-#define MQTT_PASS "654321"		// Password - connect to MQTT broker
+//#define MQTT_USER "node" 		// User - connect to MQTT broker
+//#define MQTT_PASS "654321"		// Password - connect to MQTT broker
 
-//#define MQTT_USER "mqttnode"       // User - connect to MQTT broker
-//#define MQTT_PASS "congamo"		// Password - connect to MQTT broker
+#define MQTT_USER "mqttnode"       // User - connect to MQTT broker
+#define MQTT_PASS "congamo"		// Password - connect to MQTT broker
 
-#define MQTT_TOPIC_ACTUATOR_STATUS FARM "/sn/" SERIAL_NUMBER "/as/"
+#define MQTT_TOPIC_ACTUATOR_STATUS FARM "/sn/" SERIAL_NUMBER
 // MQTT topic to subscribe and get command to switch on/off actuator
 #define MQTT_TOPIC_ACTUATOR_CONTROL FARM "/snac/" SERIAL_NUMBER "/"
 /** MQTT
