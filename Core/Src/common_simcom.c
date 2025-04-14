@@ -16,7 +16,6 @@
 /* Private variables ---------------------------------------------------------*/
 extern UART_HandleTypeDef huart1;
 extern TIM_HandleTypeDef htim6;
-
 /* USER CODE BEGIN 0 */
 char rx_data_sim[700];
 char array_at_command[400];
@@ -55,11 +54,15 @@ int rssi = -99;
 uint16_t frequency_1hz = 0;
 bool to_send_status_to_server = false;
 
+bool motor_ph_1=false;
+bool motor_ph_2=false;
+bool motor_ec=false;
+
 /* USER CODE END 0 */
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
   if (htim->Instance == htim6.Instance) {
-    if (current_status_simcom == MqttReady) {
+    if (current_status_simcom == Subscribed) {
       frequency_1hz++;
       if (frequency_1hz >= INTERVAL_PUPLISH_DATA) {
         to_send_status_to_server = 1;
@@ -171,7 +174,6 @@ bool wait_for_pb_done_event(void) {
       if (strstr((char *)rx_data_sim, "PB DONE")) {
         send_to_simcom_a76xx("ATE0\r\n");
         HAL_Delay(200);
-        HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin, GPIO_PIN_SET);
         return true;
       }
     }
@@ -274,8 +276,8 @@ bool enable_mqtt_on_gsm_modem(void) {
   }
 #else
   send_to_simcom_a76xx("AT+CMQTTSTART\r\n");
-  HAL_Delay(400);
-  if ((strstr((char *)rx_data_sim, "+CMQTTSTART: 0") != NULL)) {
+  HAL_Delay(1000);
+  if ((strstr((char *)rx_data_sim, "+CMQTTSTART: 0") != NULL)||(strstr((char *)rx_data_sim, "OK")!= NULL)) {
     printf("----------Service have started successfully------------\n");
     return true;
   } else {
@@ -436,6 +438,24 @@ void create_JSON(void) {
   cJSON_Delete(json);
 }
 
+void create_Json_status_motor(void)
+{
+	  cJSON *json = cJSON_CreateObject();
+	  cJSON_AddNumberToObject(json, "1", motor_ec);
+	  cJSON_AddNumberToObject(json, "2", motor_ph_1);
+	  cJSON_AddNumberToObject(json, "3", motor_ph_2);
+
+	  char *json_string = cJSON_PrintUnformatted(json);
+	  if (json_string == NULL) {
+	    printf("New create error JSON\n");
+	    cJSON_Delete(json);
+	    return;
+	  }
+	  sprintf(array_json, "%s", json_string);
+	  // decompress memory
+	  free(json_string);
+	  cJSON_Delete(json);
+}
 bool publish_mqtt_via_gsm(void) {
   //  is used to input the topic of a publish message
   create_JSON();
@@ -498,6 +518,45 @@ bool publish_mqtt_via_gsm(void) {
              "--------\n");
       is_at_data_puplish_mqtt = false;
     }
+
+
+	create_Json_status_motor();
+  sprintf(array_at_command, "AT+CMQTTTOPIC=0,%d\r\n", strlen(MQTT_TOPIC_MOTOR_STATUS));
+  send_to_simcom_a76xx(array_at_command);
+  HAL_Delay(400);
+  sprintf(array_at_command, "%s\r\n", MQTT_TOPIC_MOTOR_STATUS);
+  send_to_simcom_a76xx(array_at_command);
+  HAL_Delay(400);
+  if (strstr((char *)rx_data_sim, "OK") != NULL) {
+    printf("\r\n----- Sent input the topic of a publish message success ! ---------\n");
+    is_at_topic_puplish_mqtt = true;
+  } else {
+    printf("\r\n----------------- Sent input the topic of a publish message fail "
+           "!------------------\n");
+    is_at_topic_puplish_mqtt = false;
+  }
+  if (is_at_topic_puplish_mqtt) {
+    // is used to input the message body of a publish message.
+    int length_array = strlen(array_json);
+    sprintf(array_at_command, "AT+CMQTTPAYLOAD=0,%d\r\n", length_array);
+    send_to_simcom_a76xx(array_at_command);
+    HAL_Delay(400);
+    send_to_simcom_a76xx(array_json);
+    HAL_Delay(600);
+    if (strstr((char *)rx_data_sim, "OK") != NULL) {
+      printf("\r\n----------------- Sent input the message body of a publish "
+             "message ! ------------------\n");
+      is_at_data_puplish_mqtt = true;
+    } else {
+      printf("\r\n--- Sent input the message body of a publish fail! "
+             "--------\n");
+      is_at_data_puplish_mqtt = false;
+    }
+  }
+
+
+
+
     if (is_at_data_puplish_mqtt) {
       send_to_simcom_a76xx("AT+CMQTTPUB=0,1,60\r\n");
       HAL_Delay(2000);
@@ -515,6 +574,55 @@ bool publish_mqtt_via_gsm(void) {
   return false;
 }
 
+bool publish_mqtt_motor_status (void)
+{
+		create_Json_status_motor();
+	  sprintf(array_at_command, "AT+CMQTTTOPIC=0,%d\r\n", strlen(MQTT_TOPIC_MOTOR_STATUS));
+	  send_to_simcom_a76xx(array_at_command);
+	  HAL_Delay(400);
+	  sprintf(array_at_command, "%s\r\n", MQTT_TOPIC_MOTOR_STATUS);
+	  send_to_simcom_a76xx(array_at_command);
+	  HAL_Delay(400);
+	  if (strstr((char *)rx_data_sim, "OK") != NULL) {
+	    printf("\r\n----- Sent input the topic of a publish message success ! ---------\n");
+	    is_at_topic_puplish_mqtt = true;
+	  } else {
+	    printf("\r\n----------------- Sent input the topic of a publish message fail "
+	           "!------------------\n");
+	    is_at_topic_puplish_mqtt = false;
+	  }
+	  if (is_at_topic_puplish_mqtt) {
+	    // is used to input the message body of a publish message.
+	    int length_array = strlen(array_json);
+	    sprintf(array_at_command, "AT+CMQTTPAYLOAD=0,%d\r\n", length_array);
+	    send_to_simcom_a76xx(array_at_command);
+	    HAL_Delay(400);
+	    send_to_simcom_a76xx(array_json);
+	    HAL_Delay(600);
+	    if (strstr((char *)rx_data_sim, "OK") != NULL) {
+	      printf("\r\n----------------- Sent input the message body of a publish "
+	             "message ! ------------------\n");
+	      is_at_data_puplish_mqtt = true;
+	    } else {
+	      printf("\r\n--- Sent input the message body of a publish fail! "
+	             "--------\n");
+	      is_at_data_puplish_mqtt = false;
+	    }
+	    if (is_at_data_puplish_mqtt) {
+	      send_to_simcom_a76xx("AT+CMQTTPUB=0,1,60\r\n");
+	      HAL_Delay(2000);
+	      if (strstr((char *)rx_data_sim, "+CMQTTPUB: 0,0") || strstr((char *)rx_data_sim, "OK") != NULL) {
+	        printf("-----------------Publish Success !------------------\n");
+	        is_at_puplish_mqtt = true;
+	        return true;
+	      } else {
+	        printf("-----------------Publish fail !------------------\n");
+	        is_at_puplish_mqtt = false;
+	      }
+	    }
+	  }
+	  return false;
+}
 bool stop_mqtt_via_gsm(void) {
 #if SIMCOM_MODEL == a7080
   send_to_simcom_a76xx("AT+SMDISC\r\n");
@@ -634,6 +742,19 @@ void check_handle_state(enum GmsModemState status) {
     break;
   }
   case MqttReady: {
+    is_subcribed_mqtt = subscribe_mqtt_via_gsm();
+    if (is_subcribed_mqtt) {
+      total_errors = 0;
+      current_status_simcom = Subscribed;
+      printf("Current status Simcom subscribed \r\n");
+    } else
+      total_errors++;
+    if (total_errors > 5) {
+      restart_stm32();
+    }
+    break;
+  }
+  case Subscribed: {
     if (to_send_status_to_server) {
       read_sensor();
       is_updated_status = send_payload_signal_to_server();
@@ -649,10 +770,6 @@ void check_handle_state(enum GmsModemState status) {
         }
       }
     }
-    break;
-  }
-  case SleepStm32: {
-
     break;
   }
   default:

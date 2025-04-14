@@ -42,6 +42,7 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
+extern TIM_HandleTypeDef htim2;
 
 /* USER CODE END EC */
 
@@ -82,14 +83,21 @@ extern float data_temperateure_ec_fuvitech;
 extern float data_tds_ec_fuvitech;
 extern float data_salinity_ec_fuvitech;
 
+extern bool is_pb_done;
+extern bool motor_ph_1;
+extern bool motor_ph_2;
+extern bool motor_ec;
+
 
 /* USER CODE END EM */
+
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-void check_handle_state(enum GmsModemState status);
+extern void check_handle_state(enum GmsModemState status);
 bool wait_for_pb_done_event(void);
 bool check_signal_simcom(void);
 float read_level_pin(void);

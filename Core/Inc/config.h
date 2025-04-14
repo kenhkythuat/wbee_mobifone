@@ -44,6 +44,10 @@
 #define ec_fuvitech true
 #define do_fuvitech true
 
+#define duty_cycles_ph 35
+#define duty_cycles_ec 35
+#define duty_cycles_x 50
+
 //#define MQTT_USER "node" 		// User - connect to MQTT broker
 //#define MQTT_PASS "654321"		// Password - connect to MQTT broker
 
@@ -51,6 +55,7 @@
 #define MQTT_PASS "congamo"		// Password - connect to MQTT broker
 
 #define MQTT_TOPIC_ACTUATOR_STATUS FARM "/sn/" SERIAL_NUMBER
+#define MQTT_TOPIC_MOTOR_STATUS FARM "/sn/" SERIAL_NUMBER "/as/"
 // MQTT topic to subscribe and get command to switch on/off actuator
 #define MQTT_TOPIC_ACTUATOR_CONTROL FARM "/snac/" SERIAL_NUMBER "/"
 /** MQTT
