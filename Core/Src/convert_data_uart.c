@@ -82,7 +82,6 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
         	HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
         	motor_ph_2=0;
         }
-//        HAL_GPIO_WritePin(GPIO_LOAD_PORT[payLoadPin - 1], GPIO_LOAD_PIN[payLoadPin - 1], 0);
       }
     }
   }

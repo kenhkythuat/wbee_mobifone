@@ -65,22 +65,22 @@ float bytes_to_float(unsigned char *byte_array) {
 }
 
 #if ph_fuvitech
-unsigned char measured_command_ph_fuvitech[8] = {0x01, 0x03, 0x00, 0x01, 0x00, 0x02, 0x95, 0xCB};
-unsigned char temperature_command_ph_fuvitech[8] = {0x01, 0x03, 0x00, 0x03, 0x00, 0x02, 0x34, 0x0B};
+unsigned char measured_command_ph_fuvitech[8] = {0x02, 0x03, 0x00, 0x01, 0x00, 0x02, 0x95, 0xF8};
+unsigned char temperature_command_ph_fuvitech[8] = {0x02, 0x03, 0x00, 0x03, 0x00, 0x02, 0x34, 0x38};
 #endif
 #if ec_fuvitech
-unsigned char conductivity_command_ec_fuvitech[8] = {0x01, 0x03, 0x00, 0x00, 0x00, 0x02, 0xC4, 0x0B};
-unsigned char resistivity_command_ec_fuvitech[8] = {0x01, 0x03, 0x00, 0x02, 0x00, 0x02, 0x65, 0xCB};
-unsigned char temperateure_command_ec_fuvitech[8] = {0x01, 0x03, 0x00, 0x04, 0x00, 0x02, 0x85, 0xCA};
-unsigned char tds_command_ec_fuvitech[8] = {0x01, 0x03, 0x00, 0x06, 0x00, 0x02, 0x24, 0x0A};
-unsigned char salinity_command_ec_fuvitech[8] = {0x01, 0x03, 0x00, 0x08, 0x00, 0x02, 0x45, 0xC9};
+unsigned char conductivity_command_ec_fuvitech[8] = {0x03, 0x03, 0x00, 0x00, 0x00, 0x02, 0xC5, 0xE9};
+unsigned char resistivity_command_ec_fuvitech[8] = {0x03, 0x03, 0x00, 0x02, 0x00, 0x02, 0x64, 0x29};
+unsigned char temperateure_command_ec_fuvitech[8] = {0x03, 0x03, 0x00, 0x04, 0x00, 0x02, 0x84, 0x28};
+unsigned char tds_command_ec_fuvitech[8] = {0x03, 0x03, 0x00, 0x06, 0x00, 0x02, 0x25, 0xE8};
+unsigned char salinity_command_ec_fuvitech[8] = {0x03, 0x03, 0x00, 0x08, 0x00, 0x02, 0x44, 0x2B};
 #endif
 #if do_fuvitech
 unsigned char _command_do_fuvitech[8] = {0x01, 0x03, 0x00, 0x00, 0x00, 0x2A, 0xC4, 0x15};
 #endif
 
-float read_ph_fuvitech(uint8_t *data) {
-  printf("Read measured form sensor PH\r\n");
+float read_ph_fuvitech(uint8_t *data, char * data_log) {
+  printf("Read measured form %s\r\n",data_log);
   HAL_UART_Transmit(&huart4, data, 8, 1000);
   HAL_Delay(700);
   uint8_t reordered_data[4] = {rx_buffer_ph[5], rx_buffer_ph[6], rx_buffer_ph[3], rx_buffer_ph[4]};
@@ -88,8 +88,8 @@ float read_ph_fuvitech(uint8_t *data) {
   return data_ph_fuvitech;
 }
 
-float read_ec_fuvitech(uint8_t *data) {
-  printf("Read measured form sensor EC\r\n");
+float read_sensor_fuvitech(uint8_t *data, char * data_log) {
+  printf("Read sensor %s\r\n",data_log);
   HAL_UART_Transmit(&huart2, data, 8, 1000);
   HAL_Delay(700);
   uint8_t reordered_data[4] = {rx_buffer_ec[5], rx_buffer_ec[6], rx_buffer_ec[3], rx_buffer_ec[4]};
@@ -109,16 +109,16 @@ float read_do_fuvitech(uint8_t *data) {
 void read_sensor(void) {
   // read PH Fuvitech
 #if ph_fuvitech
-  data_measured_ph_fuvitech = read_ph_fuvitech(measured_command_ph_fuvitech);
-  data_temperature_ph_fuvitech = read_ph_fuvitech(temperature_command_ph_fuvitech);
+  data_measured_ph_fuvitech = read_sensor_fuvitech(measured_command_ph_fuvitech,"PH");
+  data_temperature_ph_fuvitech = read_sensor_fuvitech(temperature_command_ph_fuvitech,"PH");
 #endif
   // read EC Fuvitech
 #if ec_fuvitech
-  data_conductivity_ec_fuvitech = (read_ec_fuvitech(conductivity_command_ec_fuvitech)) * 1000;
-  data_resistivity_ec_fuvitech = read_ec_fuvitech(resistivity_command_ec_fuvitech);
-  data_temperateure_ec_fuvitech = read_ec_fuvitech(temperateure_command_ec_fuvitech);
-  data_tds_ec_fuvitech = read_ec_fuvitech(tds_command_ec_fuvitech);
-  data_salinity_ec_fuvitech = (read_ec_fuvitech(tds_command_ec_fuvitech)/640);
+  data_conductivity_ec_fuvitech = (read_sensor_fuvitech(conductivity_command_ec_fuvitech,"EC")) * 1000;
+  data_resistivity_ec_fuvitech = read_sensor_fuvitech(resistivity_command_ec_fuvitech,"EC");
+  data_temperateure_ec_fuvitech = read_sensor_fuvitech(temperateure_command_ec_fuvitech,"EC");
+  data_tds_ec_fuvitech = read_sensor_fuvitech(tds_command_ec_fuvitech,"EC");
+  data_salinity_ec_fuvitech = (read_sensor_fuvitech(tds_command_ec_fuvitech,"EC")/640);
 #endif
 #if do_fuvitech
 //  data_dissolved_oxygen_fuvitech = read_do_fuvitech(_command_do_fuvitech);

@@ -519,48 +519,10 @@ bool publish_mqtt_via_gsm(void) {
       is_at_data_puplish_mqtt = false;
     }
 
-
-	create_Json_status_motor();
-  sprintf(array_at_command, "AT+CMQTTTOPIC=0,%d\r\n", strlen(MQTT_TOPIC_MOTOR_STATUS));
-  send_to_simcom_a76xx(array_at_command);
-  HAL_Delay(400);
-  sprintf(array_at_command, "%s\r\n", MQTT_TOPIC_MOTOR_STATUS);
-  send_to_simcom_a76xx(array_at_command);
-  HAL_Delay(400);
-  if (strstr((char *)rx_data_sim, "OK") != NULL) {
-    printf("\r\n----- Sent input the topic of a publish message success ! ---------\n");
-    is_at_topic_puplish_mqtt = true;
-  } else {
-    printf("\r\n----------------- Sent input the topic of a publish message fail "
-           "!------------------\n");
-    is_at_topic_puplish_mqtt = false;
-  }
-  if (is_at_topic_puplish_mqtt) {
-    // is used to input the message body of a publish message.
-    int length_array = strlen(array_json);
-    sprintf(array_at_command, "AT+CMQTTPAYLOAD=0,%d\r\n", length_array);
-    send_to_simcom_a76xx(array_at_command);
-    HAL_Delay(400);
-    send_to_simcom_a76xx(array_json);
-    HAL_Delay(600);
-    if (strstr((char *)rx_data_sim, "OK") != NULL) {
-      printf("\r\n----------------- Sent input the message body of a publish "
-             "message ! ------------------\n");
-      is_at_data_puplish_mqtt = true;
-    } else {
-      printf("\r\n--- Sent input the message body of a publish fail! "
-             "--------\n");
-      is_at_data_puplish_mqtt = false;
-    }
-  }
-
-
-
-
     if (is_at_data_puplish_mqtt) {
       send_to_simcom_a76xx("AT+CMQTTPUB=0,1,60\r\n");
       HAL_Delay(2000);
-      if (strstr((char *)rx_data_sim, "+CMQTTPUB: 0,0") || strstr((char *)rx_data_sim, "OK") != NULL) {
+      if (strstr((char *)rx_data_sim, "+CMQTTPUB: 0,0") != NULL) {
         printf("-----------------Publish Success !------------------\n");
         is_at_puplish_mqtt = true;
         return true;
@@ -611,7 +573,7 @@ bool publish_mqtt_motor_status (void)
 	    if (is_at_data_puplish_mqtt) {
 	      send_to_simcom_a76xx("AT+CMQTTPUB=0,1,60\r\n");
 	      HAL_Delay(2000);
-	      if (strstr((char *)rx_data_sim, "+CMQTTPUB: 0,0") || strstr((char *)rx_data_sim, "OK") != NULL) {
+	      if (strstr((char *)rx_data_sim, "+CMQTTPUB: 0,0") != NULL) {
 	        printf("-----------------Publish Success !------------------\n");
 	        is_at_puplish_mqtt = true;
 	        return true;
@@ -758,6 +720,7 @@ void check_handle_state(enum GmsModemState status) {
     if (to_send_status_to_server) {
       read_sensor();
       is_updated_status = send_payload_signal_to_server();
+      is_updated_status= publish_mqtt_motor_status();
       if (is_updated_status) {
         to_send_status_to_server = 0;
         IWDG->KR = 0xAAAA;

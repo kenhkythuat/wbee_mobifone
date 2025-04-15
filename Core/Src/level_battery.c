@@ -7,7 +7,7 @@
 
 #include "main.h"
 #include "stdio.h"
-extern ADC_HandleTypeDef hadc1;
+//extern ADC_HandleTypeDef hadc1;
 uint16_t adc_value;
 float level_pin;
 float percentage_pin;
