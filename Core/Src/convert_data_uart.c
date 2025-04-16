@@ -27,6 +27,12 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
   if (huart->Instance == USART1) {
     printf("\r\nSIMCOM Response:");
     printf(rx_buffer);
+
+#if INTERVAL_PUPLISH_DATA >= 60
+    {
+    	snprintf(rx_data_sim, sizeof(rx_buffer), "%s", rx_buffer);
+    }
+#else
     for (int i = 0; i < 700; i++) {
       rx_data_sim[i] = rx_buffer[i];
     if ((char)rx_buffer[i] == (char)SERIAL_NUMBER[5] && (char)rx_buffer[i + 1] == (char)SERIAL_NUMBER[6] &&
@@ -85,6 +91,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
       }
     }
   }
+#endif
     HAL_UARTEx_ReceiveToIdle_IT(&huart1, (uint8_t *)rx_buffer, 700);
     if ((strstr((char *)rx_buffer, "+CMQTTCONNLOST") != NULL) && is_pb_done == true) {
       printf("--------------Client Disconnect passively!---------------\n");

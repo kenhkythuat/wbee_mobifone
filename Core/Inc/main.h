@@ -43,6 +43,8 @@ extern "C" {
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
 extern TIM_HandleTypeDef htim2;
+extern ADC_HandleTypeDef hadc1;
+extern DMA_HandleTypeDef hdma_adc1;
 
 /* USER CODE END EC */
 
@@ -67,7 +69,7 @@ extern char rx_buffer_ec[20];
 extern char rx_buffer_ph[20];
 extern char rx_buffer_do[100];
 extern float data_ph_fuvitech;
-extern uint32_t adc_pin_valve;
+extern uint16_t adc_pin_valve;
 extern float data_percentage_pin;
 extern uint16_t frequency_1hz;
 extern bool to_send_status_to_server;

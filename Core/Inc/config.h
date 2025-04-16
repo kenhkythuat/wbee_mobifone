@@ -15,7 +15,7 @@
 
 // Codename of the farm, where we deploy this node to.
 
-#define VERSION_MANTIS "1.0"
+#define VERSION_WBEE "1.0"
 
 #define FARM "gateway-agriconnect"
 //#define FARM "demox"
@@ -28,13 +28,11 @@
 
 #define SIMCOM_MODEL a7670c // #default is a7670 if you use model other please choose enter your model
 #define SAVE_LOAD false
-#define INTERVAL_PUPLISH_DATA 7 // the time the device sends data to the server
-#define CHECK_TIME_AFTER_MQTT_RESTART 50  //UNITS IN SECONDS
-#define NUMBER_LOADS 8
+#define INTERVAL_PUPLISH_DATA 250 // the time the device sends data to the server, If the sending time is over 60 seconds, the sensor will go into deep sleep.
 
 // Serial number. Must be lower case.
 #ifndef SERIAL_NUMBER
-  #define SERIAL_NUMBER "hb000999"
+  #define SERIAL_NUMBER "hb000998"
 #endif
 
 #define true 1
@@ -65,6 +63,8 @@
 
 #define MQTT_CLIENT_ID  SERIAL_NUMBER
 #define MQTT_PORT 1883
+
+#define TIME_PERIOD ((2000000*INTERVAL_PUPLISH_DATA)/60000)-1
 
 
 #endif /* INC_CONFIG_H_ */

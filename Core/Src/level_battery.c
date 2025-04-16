@@ -7,7 +7,8 @@
 
 #include "main.h"
 #include "stdio.h"
-//extern ADC_HandleTypeDef hadc1;
+extern ADC_HandleTypeDef hadc1;
+extern DMA_HandleTypeDef hdma_adc1;
 uint16_t adc_value;
 float level_pin;
 float percentage_pin;
@@ -23,7 +24,9 @@ float map(float in, int x_inmin, int x_inmax, int x_outmin, int x_outmax) {
 
 float read_level_pin(void) {
 
+
   adc_value = adc_pin_valve;
+//  HAL_ADC_Stop_DMA(&hadc1);
   // vol 0 -> 3.05 <=> 0 -> 3250 ADC, 3.05v is the actual measurement result
   // on the voltage divider bridge
   level_pin = map(adc_value, 0, 3250, 0, 3.05);

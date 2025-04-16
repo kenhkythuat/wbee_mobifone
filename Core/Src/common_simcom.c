@@ -16,6 +16,7 @@
 /* Private variables ---------------------------------------------------------*/
 extern UART_HandleTypeDef huart1;
 extern TIM_HandleTypeDef htim6;
+extern TIM_HandleTypeDef htim3;
 /* USER CODE BEGIN 0 */
 char rx_data_sim[700];
 char array_at_command[400];
@@ -58,6 +59,7 @@ bool motor_ph_1=false;
 bool motor_ph_2=false;
 bool motor_ec=false;
 
+uint16_t frequency_1hz_timer2;
 /* USER CODE END 0 */
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
@@ -70,8 +72,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         printf("Case error log total :%d\r\n", total_errors);
       }
     }
+    HAL_TIM_Base_Start_IT(&htim6);
   }
-  HAL_TIM_Base_Start_IT(&htim6);
+  if (htim->Instance == htim3.Instance) {
+	  frequency_1hz_timer2++;
+  }
+
 }
 
 void send_to_simcom_a76xx(char *cmd) {
@@ -651,6 +657,24 @@ bool send_payload_signal_to_server(void) {
   return false;
 }
 
+void sleep_stm32(void) {
+  printf("begin sleep mode STM32");
+  HAL_GPIO_WritePin(PWRKEY_SIMCOM_GPIO_Port, PWRKEY_SIMCOM_Pin, GPIO_PIN_SET);
+  HAL_Delay(3000);
+  HAL_GPIO_WritePin(PWRKEY_SIMCOM_GPIO_Port, PWRKEY_SIMCOM_Pin, GPIO_PIN_RESET);
+  HAL_Delay(6000);
+  HAL_GPIO_WritePin(GPIOB, LED_STATUS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, ENABLE_SENSOR_Pin, GPIO_PIN_RESET);
+  printf("--------GOOD BYE !-------");
+  HAL_TIM_Base_Stop_IT(&htim6);
+    HAL_ADC_Stop_DMA(&hadc1);
+  HAL_TIM_Base_Start_IT(&htim3);
+  HAL_SuspendTick();
+  HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFE);
+  HAL_ResumeTick();
+  NVIC_SystemReset();
+}
+
 void check_handle_state(enum GmsModemState status) {
   switch (status) {
   case Off: {
@@ -717,7 +741,8 @@ void check_handle_state(enum GmsModemState status) {
     break;
   }
   case Subscribed: {
-    if (to_send_status_to_server) {
+#if INTERVAL_PUPLISH_DATA < 60
+	  if (to_send_status_to_server) {
       read_sensor();
       is_updated_status = send_payload_signal_to_server();
       is_updated_status= publish_mqtt_motor_status();
@@ -732,9 +757,33 @@ void check_handle_state(enum GmsModemState status) {
           current_status_simcom = On;
         }
       }
-    }
-    break;
   }
+
+#else
+      read_sensor();
+      is_updated_status = send_payload_signal_to_server();
+      if (is_updated_status) {
+        to_send_status_to_server = 0;
+        IWDG->KR = 0xAAAA;
+        total_errors = 0;
+    current_status_simcom = SleepStm32;
+      } else {
+        total_errors++;
+        if (total_errors > 3) {
+          stop_mqtt_via_gsm();
+          current_status_simcom = On;
+        }
+      }
+
+#endif
+	  break;
+  }
+#if INTERVAL_PUPLISH_DATA >= 60
+  case SleepStm32: {
+	  sleep_stm32();
+	  break;
+  }
+#endif
   default:
     printf("Case cannot be determined !\r\n");
   }
