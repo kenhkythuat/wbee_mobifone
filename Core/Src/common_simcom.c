@@ -17,10 +17,13 @@
 extern UART_HandleTypeDef huart1;
 extern TIM_HandleTypeDef htim6;
 extern TIM_HandleTypeDef htim3;
+extern UART_HandleTypeDef huart5;
 /* USER CODE BEGIN 0 */
 char rx_data_sim[700];
 char array_at_command[400];
 char array_json[400];
+
+char test_lcd[10]="hello";
 
 int previousTick;
 bool is_pb_done = false;
@@ -60,6 +63,8 @@ bool motor_ph_2=false;
 bool motor_ec=false;
 
 uint16_t frequency_1hz_timer2;
+
+bool is_publish_data_lcd = false;
 /* USER CODE END 0 */
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
@@ -675,6 +680,13 @@ void sleep_stm32(void) {
   NVIC_SystemReset();
 }
 
+bool update_data_to_sreen(uint8_t *data){
+	  printf("update data to sreen \r\n");
+	  HAL_UART_Transmit(&huart5, data, strlen((const char *)data), 1000);
+	  return 1;
+	return 0;
+}
+
 void check_handle_state(enum GmsModemState status) {
   switch (status) {
   case Off: {
@@ -745,7 +757,12 @@ void check_handle_state(enum GmsModemState status) {
 	  if (to_send_status_to_server) {
       read_sensor();
       is_updated_status = send_payload_signal_to_server();
+      is_publish_data_lcd = update_data_to_sreen(array_json);
       is_updated_status= publish_mqtt_motor_status();
+      //HAL_UART_Transmit(&huart5, tx5_status_pump, strlen((char*)tx5_status_pump), 200);
+      sprintf(tx5_status_pump,data_status_pump,motor_ec,motor_ph_1,motor_ph_2);
+      is_publish_data_lcd = update_data_to_sreen(tx5_status_pump);
+
       if (is_updated_status) {
         to_send_status_to_server = 0;
         IWDG->KR = 0xAAAA;

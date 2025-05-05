@@ -67,7 +67,9 @@ extern char rx_data_sim[700];
 extern char array_json[400];
 extern char rx_buffer_ec[20];
 extern char rx_buffer_ph[20];
-extern char rx_buffer_do[100];
+extern char rx_buffer_do[100];;
+extern char tx5_status_pump[50];
+extern char data_status_pump[50];
 extern float data_ph_fuvitech;
 extern uint16_t adc_pin_valve;
 extern float data_percentage_pin;
@@ -104,6 +106,7 @@ bool wait_for_pb_done_event(void);
 bool check_signal_simcom(void);
 float read_level_pin(void);
 void read_sensor(void);
+extern bool update_data_to_sreen(uint8_t *data);
 
 /* USER CODE END EFP */
 

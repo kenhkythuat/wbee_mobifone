@@ -23,6 +23,11 @@
 /* USER CODE BEGIN Includes */
 #include <config.h>
 #include <stdio.h>
+#include "string.h"
+#include "stdbool.h"
+#include "stdio.h"
+#include "stdlib.h"
+
 
 /* USER CODE END Includes */
 
@@ -60,6 +65,7 @@ TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim6;
 
 UART_HandleTypeDef huart4;
+UART_HandleTypeDef huart5;
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
@@ -79,6 +85,7 @@ static void MX_USART2_UART_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_UART5_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -89,6 +96,11 @@ char rx_buffer[700];
 enum GmsModemState current_status_simcom = Off;
 uint16_t adc_pin_valve;
 
+char test_lcd_1[10]="hello";
+uint8_t message[200] = "{\"solEC\":3.3, \"solPH\":7.3, \"ui_valueDO\":23.3, \"solT\":32.3, \"_gsm_signal_strength\":-60, \"_battery_level\":99.56}";
+uint8_t message_pump[100]="{\"1\":1,\"2\":1,\"3\":1}";
+//uint16_t message_len = strlen((char*)message);
+//, \"ui_valueRSSI\":-60, \"ui_valueBATTERRY\":99
 
 
 /* USER CODE END 0 */
@@ -123,9 +135,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
-#if INTERVAL_PUPLISH_DATA < 60
   MX_IWDG_Init();
-#endif
   MX_TIM6_Init();
   MX_UART4_Init();
   MX_USART1_UART_Init();
@@ -133,9 +143,11 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM3_Init();
   MX_ADC1_Init();
+  MX_UART5_Init();
   /* USER CODE BEGIN 2 */
   HAL_UARTEx_ReceiveToIdle_IT(&huart1, (uint8_t *)rx_buffer, 700);
   HAL_UARTEx_ReceiveToIdle_IT(&huart2, (uint8_t *)rx_buffer_ec, 20);
+  HAL_UARTEx_ReceiveToIdle_IT(&huart5, (uint8_t *)rx_buffer_do, 20);
   //  HAL_UARTEx_ReceiveToIdle_IT(&huart2, (uint8_t *)rx_buffer_do, 100);
   HAL_UARTEx_ReceiveToIdle_IT(&huart4, (uint8_t *)rx_buffer_ph, 20);
   HAL_TIM_Base_Start_IT(&htim6);
@@ -150,6 +162,18 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     check_handle_state(current_status_simcom);
+//	  update_data_to_sreen(test_lcd_1);
+//	  for(float i = 1.5; i <= 100;) {
+//	      char buffer[16]; // Đủ lớn để chứa chuỗi số
+//	      snprintf(buffer, sizeof(buffer), "%.2f\n", i); // Chuyển số thành chuỗi
+//	      HAL_UART_Transmit(&huart5, (uint8_t*)buffer, strlen(buffer), 100);
+//	      HAL_Delay(200); // Gửi mỗi 200ms
+//	      i=(i+1.3);
+//	  }
+//      HAL_UART_Transmit(&huart5, message, strlen((char*)message), 1000);
+//      HAL_Delay(5000);  // Gửi mỗi 1 giây
+//      HAL_UART_Transmit(&huart5, message_pump, strlen((char*)message_pump), 1000);
+//      HAL_Delay(5000);  // Gửi mỗi 1 giây
   }
   /* USER CODE END 3 */
 }
@@ -360,7 +384,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 59999;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = TIME_PERIOD;
+  htim3.Init.Period = 999;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -404,7 +428,7 @@ static void MX_TIM6_Init(void)
   htim6.Instance = TIM6;
   htim6.Init.Prescaler = 1999;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 999;
+  htim6.Init.Period = TIME_PERIOD;
   htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
@@ -452,6 +476,39 @@ static void MX_UART4_Init(void)
   /* USER CODE BEGIN UART4_Init 2 */
 
   /* USER CODE END UART4_Init 2 */
+
+}
+
+/**
+  * @brief UART5 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_UART5_Init(void)
+{
+
+  /* USER CODE BEGIN UART5_Init 0 */
+
+  /* USER CODE END UART5_Init 0 */
+
+  /* USER CODE BEGIN UART5_Init 1 */
+
+  /* USER CODE END UART5_Init 1 */
+  huart5.Instance = UART5;
+  huart5.Init.BaudRate = 9600;
+  huart5.Init.WordLength = UART_WORDLENGTH_8B;
+  huart5.Init.StopBits = UART_STOPBITS_1;
+  huart5.Init.Parity = UART_PARITY_NONE;
+  huart5.Init.Mode = UART_MODE_TX_RX;
+  huart5.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart5.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN UART5_Init 2 */
+
+  /* USER CODE END UART5_Init 2 */
 
 }
 

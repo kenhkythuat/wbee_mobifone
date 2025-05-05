@@ -15,9 +15,13 @@
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart4;
+extern UART_HandleTypeDef huart5;
 char rx_buffer_ec[20];
 char rx_buffer_ph[20];
 char rx_buffer_do[100];
+char data_status_pump[50]="{\"1\":%d,\"2\":%d,\"3\":%d}";
+char tx5_status_pump[50];
+
 uint8_t payLoadPin;
 
 // uint8_t reordered_data_ph[4];
@@ -25,8 +29,8 @@ uint8_t payLoadPin;
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
   if (huart->Instance == USART1) {
-    printf("\r\nSIMCOM Response:");
-    printf(rx_buffer);
+//    printf("\r\nSIMCOM Response:");
+//    printf(rx_buffer);
 
 #if INTERVAL_PUPLISH_DATA >= 60
     {
@@ -65,6 +69,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
         	__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3, duty_cycles_x);
         	motor_ph_2=1;
         }
+
       }
 
 #if SIMCOM_MODEL == a7672s

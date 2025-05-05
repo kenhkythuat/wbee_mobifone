@@ -28,11 +28,11 @@
 
 #define SIMCOM_MODEL a7670c // #default is a7670 if you use model other please choose enter your model
 #define SAVE_LOAD false
-#define INTERVAL_PUPLISH_DATA 250 // the time the device sends data to the server, If the sending time is over 60 seconds, the sensor will go into deep sleep.
+#define INTERVAL_PUPLISH_DATA 7 // the time the device sends data to the server, If the sending time is over 60 seconds, the sensor will go into deep sleep.
 
 // Serial number. Must be lower case.
 #ifndef SERIAL_NUMBER
-  #define SERIAL_NUMBER "hb000998"
+  #define SERIAL_NUMBER "hb000999"
 #endif
 
 #define true 1
