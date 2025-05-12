@@ -19,6 +19,7 @@ extern UART_HandleTypeDef huart5;
 char rx_buffer_ec[20];
 char rx_buffer_ph[20];
 char rx_buffer_do[100];
+char rx_buffer_fuvitech[100];
 char data_status_pump[50]="{\"1\":%d,\"2\":%d,\"3\":%d}";
 char tx5_status_pump[50];
 
@@ -105,8 +106,8 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
   }
   if (huart->Instance == USART2) {
     // sensor EC
-    HAL_UARTEx_ReceiveToIdle_IT(&huart2, (uint8_t *)rx_buffer_ec, 20);
-    //    HAL_UARTEx_ReceiveToIdle_IT(&huart2, (uint8_t *)rx_buffer_do, 100);
+//    HAL_UARTEx_ReceiveToIdle_IT(&huart2, (uint8_t *)rx_buffer_ec, 20);
+        HAL_UARTEx_ReceiveToIdle_IT(&huart2, (uint8_t *)rx_buffer_fuvitech,100);
   }
   if (huart->Instance == UART4) {
     // sensor PH

@@ -146,9 +146,9 @@ int main(void)
   MX_UART5_Init();
   /* USER CODE BEGIN 2 */
   HAL_UARTEx_ReceiveToIdle_IT(&huart1, (uint8_t *)rx_buffer, 700);
-  HAL_UARTEx_ReceiveToIdle_IT(&huart2, (uint8_t *)rx_buffer_ec, 20);
-  HAL_UARTEx_ReceiveToIdle_IT(&huart5, (uint8_t *)rx_buffer_do, 20);
-  //  HAL_UARTEx_ReceiveToIdle_IT(&huart2, (uint8_t *)rx_buffer_do, 100);
+//  HAL_UARTEx_ReceiveToIdle_IT(&huart2, (uint8_t *)rx_buffer_ec, 20);
+  //HAL_UARTEx_ReceiveToIdle_IT(&huart5, (uint8_t *)rx_buffer_do, 20);
+    HAL_UARTEx_ReceiveToIdle_IT(&huart2, (uint8_t *)rx_buffer_fuvitech, 100);
   HAL_UARTEx_ReceiveToIdle_IT(&huart4, (uint8_t *)rx_buffer_ph, 20);
   HAL_TIM_Base_Start_IT(&htim6);
   HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&adc_pin_valve, 1);
@@ -162,18 +162,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     check_handle_state(current_status_simcom);
-//	  update_data_to_sreen(test_lcd_1);
-//	  for(float i = 1.5; i <= 100;) {
-//	      char buffer[16]; // Đủ lớn để chứa chuỗi số
-//	      snprintf(buffer, sizeof(buffer), "%.2f\n", i); // Chuyển số thành chuỗi
-//	      HAL_UART_Transmit(&huart5, (uint8_t*)buffer, strlen(buffer), 100);
-//	      HAL_Delay(200); // Gửi mỗi 200ms
-//	      i=(i+1.3);
-//	  }
-//      HAL_UART_Transmit(&huart5, message, strlen((char*)message), 1000);
-//      HAL_Delay(5000);  // Gửi mỗi 1 giây
-//      HAL_UART_Transmit(&huart5, message_pump, strlen((char*)message_pump), 1000);
-//      HAL_Delay(5000);  // Gửi mỗi 1 giây
+//	  read_sensor();
   }
   /* USER CODE END 3 */
 }

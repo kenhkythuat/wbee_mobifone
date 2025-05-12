@@ -68,6 +68,7 @@ extern char array_json[400];
 extern char rx_buffer_ec[20];
 extern char rx_buffer_ph[20];
 extern char rx_buffer_do[100];;
+extern char rx_buffer_fuvitech[100];
 extern char tx5_status_pump[50];
 extern char data_status_pump[50];
 extern float data_ph_fuvitech;
@@ -86,6 +87,7 @@ extern float data_resistivity_ec_fuvitech;
 extern float data_temperateure_ec_fuvitech;
 extern float data_tds_ec_fuvitech;
 extern float data_salinity_ec_fuvitech;
+extern float data_dissolved_oxygen_fuvitech;
 
 extern bool is_pb_done;
 extern bool motor_ph_1;

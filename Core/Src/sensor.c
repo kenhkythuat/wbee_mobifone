@@ -83,17 +83,28 @@ float read_ph_fuvitech(uint8_t *data, char * data_log) {
   printf("Read measured form %s\r\n",data_log);
   HAL_UART_Transmit(&huart4, data, 8, 1000);
   HAL_Delay(700);
-  uint8_t reordered_data[4] = {rx_buffer_ph[5], rx_buffer_ph[6], rx_buffer_ph[3], rx_buffer_ph[4]};
+  uint8_t reordered_data[4] = {rx_buffer_fuvitech[5], rx_buffer_fuvitech[6], rx_buffer_fuvitech[3], rx_buffer_fuvitech[4]};
   data_ph_fuvitech = ieee754_to_float(reordered_data);
   return data_ph_fuvitech;
 }
 
 float read_sensor_fuvitech(uint8_t *data, char * data_log) {
   printf("Read sensor %s\r\n",data_log);
-  HAL_UART_Transmit(&huart2, data, 8, 1000);
-  HAL_Delay(700);
-  uint8_t reordered_data[4] = {rx_buffer_ec[5], rx_buffer_ec[6], rx_buffer_ec[3], rx_buffer_ec[4]};
-  data_ec_fuvitech = ieee754_to_float(reordered_data);
+  data_ec_fuvitech=0;
+  HAL_UART_Transmit(&huart2, data, 8, 500);
+  HAL_Delay(500);
+  if(rx_buffer_fuvitech[0]==2&&rx_buffer_fuvitech[1]==3&&rx_buffer_fuvitech[2]==4){
+	  uint8_t reordered_data[4] = {rx_buffer_fuvitech[5], rx_buffer_fuvitech[6], rx_buffer_fuvitech[3], rx_buffer_fuvitech[4]};
+	  data_ec_fuvitech = ieee754_to_float(reordered_data);
+  }
+  if(rx_buffer_fuvitech[0]==3&&rx_buffer_fuvitech[1]==3&&rx_buffer_fuvitech[2]==4){
+	  uint8_t reordered_data[4] = {rx_buffer_fuvitech[5], rx_buffer_fuvitech[6], rx_buffer_fuvitech[3], rx_buffer_fuvitech[4]};
+	  data_ec_fuvitech = ieee754_to_float(reordered_data);
+  }
+  if(rx_buffer_fuvitech[0]==1&&rx_buffer_fuvitech[1]==3){
+	  data_ec_fuvitech = (rx_buffer_fuvitech[43]<<8| rx_buffer_fuvitech[44]);
+  }
+  memset(rx_buffer_fuvitech, '\0', 100);
   return data_ec_fuvitech;
 }
 
@@ -101,8 +112,8 @@ float read_do_fuvitech(uint8_t *data) {
   printf("Read measured form sensor EC\r\n");
   HAL_UART_Transmit(&huart2, data, 8, 1000);
   HAL_Delay(700);
-  uint8_t reordered_data[4] = {rx_buffer_do[43], rx_buffer_do[44], rx_buffer_do[45], rx_buffer_do[46]};
-  data_do_fuvitech = bytes_to_float(reordered_data);
+  data_do_fuvitech = (rx_buffer_fuvitech[43]<<8| rx_buffer_fuvitech[44]);
+  memset(rx_buffer_fuvitech, '\0', 100);
   return data_do_fuvitech;
 }
 
@@ -121,6 +132,6 @@ void read_sensor(void) {
   data_salinity_ec_fuvitech = (read_sensor_fuvitech(tds_command_ec_fuvitech,"EC")/640);
 #endif
 #if do_fuvitech
-//  data_dissolved_oxygen_fuvitech = read_do_fuvitech(_command_do_fuvitech);
+  data_dissolved_oxygen_fuvitech = read_sensor_fuvitech(_command_do_fuvitech,"DO")/100;
 #endif
 }

@@ -422,6 +422,7 @@ void create_JSON(void) {
   char data_tds_ec_fuvitech_str[16];
   char data_resistivity_ec_fuvitech_str[16];
   char data_salinity_ec_fuvitech_str[16];
+  char data_dissolved_oxygen_str[16];
 
   snprintf(data_measured_ph_fuvitech_str, sizeof(data_measured_ph_fuvitech_str), "%.2f", data_measured_ph_fuvitech);
   snprintf(data_temperature_ph_fuvitech_str, sizeof(data_temperature_ph_fuvitech_str), "%.2f", data_temperature_ph_fuvitech);
@@ -430,6 +431,7 @@ void create_JSON(void) {
   snprintf(data_tds_ec_fuvitech_str, sizeof(data_tds_ec_fuvitech_str), "%.2f", data_tds_ec_fuvitech);
   snprintf(data_resistivity_ec_fuvitech_str, sizeof(data_resistivity_ec_fuvitech_str), "%.2f", data_resistivity_ec_fuvitech);
   snprintf(data_salinity_ec_fuvitech_str, sizeof(data_salinity_ec_fuvitech_str), "%.2f", data_salinity_ec_fuvitech);
+  snprintf(data_dissolved_oxygen_str, sizeof(data_dissolved_oxygen_str), "%.2f", data_dissolved_oxygen_fuvitech);
   cJSON_AddStringToObject(json, "solPH", data_measured_ph_fuvitech_str);
   cJSON_AddStringToObject(json, "solT", data_temperature_ph_fuvitech_str);
   //   data EC Fuvitech
@@ -437,6 +439,7 @@ void create_JSON(void) {
   cJSON_AddStringToObject(json, "solTDS", data_tds_ec_fuvitech_str);
   cJSON_AddStringToObject(json, "solRes", data_resistivity_ec_fuvitech_str);
   cJSON_AddStringToObject(json, "solSal", data_salinity_ec_fuvitech_str);
+  cJSON_AddStringToObject(json, "solDO", data_dissolved_oxygen_str);
   char *json_string = cJSON_PrintUnformatted(json);
   if (json_string == NULL) {
     printf("New create error JSON\n");
