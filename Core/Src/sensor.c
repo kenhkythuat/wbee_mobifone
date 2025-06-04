@@ -105,6 +105,12 @@ float read_sensor_fuvitech(uint8_t *data, char * data_log) {
 	  data_ec_fuvitech = (rx_buffer_fuvitech[43]<<8| rx_buffer_fuvitech[44]);
   }
   memset(rx_buffer_fuvitech, '\0', 100);
+//  if(data_ec_fuvitech==0){
+//	  HAL_GPIO_WritePin(GPIOA, ENABLE_SENSOR_Pin, GPIO_PIN_RESET);
+//	  HAL_Delay(1000);
+//	  HAL_GPIO_WritePin(GPIOA, ENABLE_SENSOR_Pin, GPIO_PIN_SET);
+//	  HAL_Delay(500);
+//  }
   return data_ec_fuvitech;
 }
 

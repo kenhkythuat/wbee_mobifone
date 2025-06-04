@@ -4,8 +4,6 @@
  *  Created on: AUG 1, 2024
  *      Author: thuanphat7
  */
-
-
 #ifndef INC_CONFIG_H_
 #define INC_CONFIG_H_
 
@@ -17,7 +15,7 @@
 
 #define VERSION_WBEE "1.0"
 
-#define FARM "gateway-agriconnect"
+#define FARM "lab2life"
 //#define FARM "demox"
 
 #define a7672s 1  // 4G
@@ -32,19 +30,19 @@
 
 // Serial number. Must be lower case.
 #ifndef SERIAL_NUMBER
-  #define SERIAL_NUMBER "hb000999"
+  #define SERIAL_NUMBER "hb000023"
 #endif
 
 #define true 1
 #define false 0
 
 #define ph_fuvitech true
-#define ec_fuvitech true
+#define ec_fuvitech false
 #define do_fuvitech true
 
-#define duty_cycles_ph 35
-#define duty_cycles_ec 35
-#define duty_cycles_x 50
+#define duty_cycles_ph 99
+#define duty_cycles_ec 99
+#define duty_cycles_x 99
 
 //#define MQTT_USER "node" 		// User - connect to MQTT broker
 //#define MQTT_PASS "654321"		// Password - connect to MQTT broker

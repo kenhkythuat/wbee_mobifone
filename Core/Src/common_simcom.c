@@ -414,32 +414,37 @@ void create_JSON(void) {
   data_percentage_pin = read_level_pin();
   cJSON_AddNumberToObject(json, "_gsm_signal_strength", rssi);
   cJSON_AddNumberToObject(json, "_battery_level", data_percentage_pin);
+
+#if ph_fuvitech
   // data PH Fuvitech
   char data_measured_ph_fuvitech_str[16];
   char data_temperature_ph_fuvitech_str[16];
-
+  snprintf(data_measured_ph_fuvitech_str, sizeof(data_measured_ph_fuvitech_str), "%.2f", data_measured_ph_fuvitech);
+  snprintf(data_temperature_ph_fuvitech_str, sizeof(data_temperature_ph_fuvitech_str), "%.2f", data_temperature_ph_fuvitech);
+  cJSON_AddStringToObject(json, "solPH", data_measured_ph_fuvitech_str);
+  cJSON_AddStringToObject(json, "solT", data_temperature_ph_fuvitech_str);
+#endif
+#if ec_fuvitech
   char data_conductivity_ec_fuvitech_str[16];
   char data_tds_ec_fuvitech_str[16];
   char data_resistivity_ec_fuvitech_str[16];
   char data_salinity_ec_fuvitech_str[16];
-  char data_dissolved_oxygen_str[16];
-
-  snprintf(data_measured_ph_fuvitech_str, sizeof(data_measured_ph_fuvitech_str), "%.2f", data_measured_ph_fuvitech);
-  snprintf(data_temperature_ph_fuvitech_str, sizeof(data_temperature_ph_fuvitech_str), "%.2f", data_temperature_ph_fuvitech);
-
   snprintf(data_conductivity_ec_fuvitech_str, sizeof(data_conductivity_ec_fuvitech_str), "%.2f", data_conductivity_ec_fuvitech);
   snprintf(data_tds_ec_fuvitech_str, sizeof(data_tds_ec_fuvitech_str), "%.2f", data_tds_ec_fuvitech);
   snprintf(data_resistivity_ec_fuvitech_str, sizeof(data_resistivity_ec_fuvitech_str), "%.2f", data_resistivity_ec_fuvitech);
   snprintf(data_salinity_ec_fuvitech_str, sizeof(data_salinity_ec_fuvitech_str), "%.2f", data_salinity_ec_fuvitech);
-  snprintf(data_dissolved_oxygen_str, sizeof(data_dissolved_oxygen_str), "%.2f", data_dissolved_oxygen_fuvitech);
-  cJSON_AddStringToObject(json, "solPH", data_measured_ph_fuvitech_str);
-  cJSON_AddStringToObject(json, "solT", data_temperature_ph_fuvitech_str);
   //   data EC Fuvitech
   cJSON_AddStringToObject(json, "solEC", data_conductivity_ec_fuvitech_str);
   cJSON_AddStringToObject(json, "solTDS", data_tds_ec_fuvitech_str);
   cJSON_AddStringToObject(json, "solRes", data_resistivity_ec_fuvitech_str);
   cJSON_AddStringToObject(json, "solSal", data_salinity_ec_fuvitech_str);
+#endif
+#if do_fuvitech
+  //   data DO Fuvitech
+  char data_dissolved_oxygen_str[16];
+  snprintf(data_dissolved_oxygen_str, sizeof(data_dissolved_oxygen_str), "%.2f", data_dissolved_oxygen_fuvitech);
   cJSON_AddStringToObject(json, "solDO", data_dissolved_oxygen_str);
+#endif
   char *json_string = cJSON_PrintUnformatted(json);
   if (json_string == NULL) {
     printf("New create error JSON\n");
@@ -684,7 +689,7 @@ void sleep_stm32(void) {
 }
 
 bool update_data_to_sreen(uint8_t *data){
-	  printf("update data to sreen \r\n");
+	  printf("update data to screen \r\n");
 	  HAL_UART_Transmit(&huart5, data, strlen((const char *)data), 1000);
 	  return 1;
 	return 0;
@@ -760,11 +765,10 @@ void check_handle_state(enum GmsModemState status) {
 	  if (to_send_status_to_server) {
       read_sensor();
       is_updated_status = send_payload_signal_to_server();
-      is_publish_data_lcd = update_data_to_sreen(array_json);
+      is_publish_data_lcd = update_data_to_sreen((uint8_t *)array_json);
       is_updated_status= publish_mqtt_motor_status();
-      //HAL_UART_Transmit(&huart5, tx5_status_pump, strlen((char*)tx5_status_pump), 200);
       sprintf(tx5_status_pump,data_status_pump,motor_ec,motor_ph_1,motor_ph_2);
-      is_publish_data_lcd = update_data_to_sreen(tx5_status_pump);
+      is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
 
       if (is_updated_status) {
         to_send_status_to_server = 0;

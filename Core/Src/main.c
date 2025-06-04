@@ -96,13 +96,6 @@ char rx_buffer[700];
 enum GmsModemState current_status_simcom = Off;
 uint16_t adc_pin_valve;
 
-char test_lcd_1[10]="hello";
-uint8_t message[200] = "{\"solEC\":3.3, \"solPH\":7.3, \"ui_valueDO\":23.3, \"solT\":32.3, \"_gsm_signal_strength\":-60, \"_battery_level\":99.56}";
-uint8_t message_pump[100]="{\"1\":1,\"2\":1,\"3\":1}";
-//uint16_t message_len = strlen((char*)message);
-//, \"ui_valueRSSI\":-60, \"ui_valueBATTERRY\":99
-
-
 /* USER CODE END 0 */
 
 /**
@@ -146,9 +139,7 @@ int main(void)
   MX_UART5_Init();
   /* USER CODE BEGIN 2 */
   HAL_UARTEx_ReceiveToIdle_IT(&huart1, (uint8_t *)rx_buffer, 700);
-//  HAL_UARTEx_ReceiveToIdle_IT(&huart2, (uint8_t *)rx_buffer_ec, 20);
-  //HAL_UARTEx_ReceiveToIdle_IT(&huart5, (uint8_t *)rx_buffer_do, 20);
-    HAL_UARTEx_ReceiveToIdle_IT(&huart2, (uint8_t *)rx_buffer_fuvitech, 100);
+  HAL_UARTEx_ReceiveToIdle_IT(&huart2, (uint8_t *)rx_buffer_fuvitech, 100);
   HAL_UARTEx_ReceiveToIdle_IT(&huart4, (uint8_t *)rx_buffer_ph, 20);
   HAL_TIM_Base_Start_IT(&htim6);
   HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&adc_pin_valve, 1);
