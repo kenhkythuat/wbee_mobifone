@@ -185,6 +185,7 @@ bool wait_for_pb_done_event(void) {
       if (strstr((char *)rx_data_sim, "PB DONE")) {
         send_to_simcom_a76xx("ATE0\r\n");
         HAL_Delay(200);
+        is_connect_simcom =1;
         return true;
       }
     }
@@ -699,6 +700,7 @@ void check_handle_state(enum GmsModemState status) {
   switch (status) {
   case Off: {
     enable_simcom();
+    IWDG->KR = 0xAAAA;
     is_pb_done = wait_for_pb_done_event();
     if (is_pb_done) {
       current_status_simcom = On;
