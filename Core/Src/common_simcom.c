@@ -87,7 +87,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
 void send_to_simcom_a76xx(char *cmd) {
   printf("STM32 Write: %s", cmd);
-  HAL_UART_Transmit(&huart1, (uint8_t *)cmd, strlen(cmd), 1200);
+  HAL_UART_Transmit(&huart1, (uint8_t *)cmd, strlen(cmd), 1000);
 }
 
 void restart_stm32(void) {
@@ -115,7 +115,7 @@ void enable_simcom(void) {
   HAL_GPIO_WritePin(PWRKEY_SIMCOM_GPIO_Port, PWRKEY_SIMCOM_Pin, GPIO_PIN_RESET);
   HAL_Delay(3300);
   HAL_GPIO_WritePin(PWRKEY_SIMCOM_GPIO_Port, PWRKEY_SIMCOM_Pin, GPIO_PIN_SET);
-  HAL_Delay(200);
+  HAL_Delay(500);
   HAL_GPIO_WritePin(PWRKEY_SIMCOM_GPIO_Port, PWRKEY_SIMCOM_Pin, GPIO_PIN_RESET);
   HAL_Delay(1000);
 #endif
@@ -168,8 +168,10 @@ bool wait_for_pb_done_event(void) {
     HAL_Delay(500);
     return true;
 #elif SIMCOM_MODEL == a7680
-    HAL_Delay(10000);
+    HAL_Delay(12000);
     send_to_simcom_a76xx("ATE0\r\n");
+    HAL_Delay(200);
+    send_to_simcom_a76xx("AT+CCIOTOPTI?\r\n");
     HAL_Delay(200);
     return true;
 //	}
@@ -287,8 +289,9 @@ bool enable_mqtt_on_gsm_modem(void) {
     return true;
   }
 #else
+  memset(rx_data_sim, '\0', 700);
   send_to_simcom_a76xx("AT+CMQTTSTART\r\n");
-  HAL_Delay(1000);
+  HAL_Delay(3000);
   if ((strstr((char *)rx_data_sim, "+CMQTTSTART: 0") != NULL)||(strstr((char *)rx_data_sim, "OK")!= NULL)) {
     printf("----------Service have started successfully------------\n");
     return true;
@@ -302,7 +305,8 @@ bool enable_mqtt_on_gsm_modem(void) {
 
 bool acquire_gsm_mqtt_client(void) {
   is_acquiered_mqtt = false;
-  printf("-----------------acquire_gsm_mqtt_client------------------\n");
+  memset(rx_data_sim, '\0', 700);
+  printf("-----------------Acquire_gsm_mqtt_client------------------\n");
   sprintf(array_at_command, "+CMQTTACCQ: 0,\"%s\",0\r\n", MQTT_CLIENT_ID);
   send_to_simcom_a76xx("AT+CMQTTACCQ?\r\n");
   HAL_Delay(400);
@@ -316,9 +320,9 @@ bool acquire_gsm_mqtt_client(void) {
   if (is_at_acquier_mqtt == false) {
     sprintf(array_at_command, "AT+CMQTTACCQ=0,\"%s\",0\r\n", MQTT_CLIENT_ID);
     send_to_simcom_a76xx(array_at_command);
-    HAL_Delay(200);
-    sprintf(array_at_command, "+CMQTTACCQ: 0,\"%s\",0", MQTT_CLIENT_ID);
-    HAL_Delay(200);
+    HAL_Delay(300);
+    //sprintf(array_at_command, "+CMQTTACCQ: 0,\"%s\",0", MQTT_CLIENT_ID);
+    HAL_Delay(300);
     if (strstr((char *)rx_data_sim, "OK") != NULL) {
       printf("-----------------Acquire Successfully------------------\n");
       is_at_acquier_mqtt = true;
@@ -345,14 +349,15 @@ bool connect_mqtt_server_by_gsm(void) {
     is_at_connect_mqtt = false;
   }
   if (is_at_connect_mqtt == false) {
+	memset(rx_data_sim, '\0', 700);
     sprintf(array_at_command, "AT+CMQTTCONNECT=0,\"%s:%d\",60,1,\"%s\",\"%s\"\r\n", MQTT_HOST, MQTT_PORT, MQTT_USER, MQTT_PASS);
     send_to_simcom_a76xx(array_at_command);
     HAL_Delay(2000);
     if (strstr((char *)rx_data_sim, "+CMQTTCONNECT: 0,0") != NULL || strstr((char *)rx_data_sim, "OK") != NULL) {
-      printf("-----------------Connected MQTT Success------------------\n");
+      printf("\n-----------------Connected MQTT Success------------------\n");
       return true;
     } else {
-      printf("-----------------Connect fail------------------\n");
+      printf("\n-----------------Connect fail------------------\n");
     }
   }
   return false;
@@ -378,11 +383,12 @@ bool subscribe_mqtt_via_gsm(void) {
     return false;
   }
 #else
+  memset(rx_data_sim, '\0', 700);
   sprintf(array_at_command, "%s/snac/%s/#", FARM, SERIAL_NUMBER);
   sprintf(array_at_command, "AT+CMQTTSUBTOPIC=0,%d,1\r\n", (int)strlen(array_at_command));
   send_to_simcom_a76xx(array_at_command);
   HAL_Delay(500);
-  sprintf(array_at_command, "%s/snac/%s/#", FARM, SERIAL_NUMBER);
+  sprintf(array_at_command, "%s/snac/%s/#\r\n", FARM, SERIAL_NUMBER);
   send_to_simcom_a76xx(array_at_command);
   HAL_Delay(500);
   if (strstr((char *)rx_data_sim, "OK") != NULL) {
@@ -394,7 +400,7 @@ bool subscribe_mqtt_via_gsm(void) {
   }
   if (is_at_subcribe_topic_mqtt == true) {
     send_to_simcom_a76xx("AT+CMQTTSUB=0\r\n");
-    HAL_Delay(500);
+    HAL_Delay(1000);
     if (strstr((char *)rx_data_sim, "+CMQTTSUB: 0,0") != NULL) {
       printf("-----------------Subscribe Success !------------------\n");
       is_at_subcribe_mqtt = true;
@@ -691,7 +697,7 @@ void sleep_stm32(void) {
 
 bool update_data_to_sreen(uint8_t *data){
 	  printf("update data to screen \r\n");
-	  HAL_UART_Transmit(&huart5, data, strlen((const char *)data), 1000);
+	  HAL_UART_Transmit(&huart5, data, strlen((const char *)data), 200);
 	  return 1;
 	return 0;
 }
@@ -750,6 +756,7 @@ void check_handle_state(enum GmsModemState status) {
     break;
   }
   case MqttReady: {
+	IWDG->KR = 0xAAAA;
     is_subcribed_mqtt = subscribe_mqtt_via_gsm();
     if (is_subcribed_mqtt) {
       total_errors = 0;
@@ -766,19 +773,19 @@ void check_handle_state(enum GmsModemState status) {
 #if INTERVAL_PUPLISH_DATA < 60
 	  if (to_send_status_to_server) {
       read_sensor();
+      IWDG->KR = 0xAAAA;
       is_updated_status = send_payload_signal_to_server();
       is_publish_data_lcd = update_data_to_sreen((uint8_t *)array_json);
       is_updated_status= publish_mqtt_motor_status();
       sprintf(tx5_status_pump,data_status_pump,motor_ec,motor_ph_1,motor_ph_2);
       is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
-
       if (is_updated_status) {
         to_send_status_to_server = 0;
         IWDG->KR = 0xAAAA;
         total_errors = 0;
       } else {
         total_errors++;
-        if (total_errors > 3) {
+        if (total_errors > 5) {
           stop_mqtt_via_gsm();
           current_status_simcom = On;
         }

@@ -76,7 +76,8 @@ unsigned char tds_command_ec_fuvitech[8] = {0x03, 0x03, 0x00, 0x06, 0x00, 0x02, 
 unsigned char salinity_command_ec_fuvitech[8] = {0x03, 0x03, 0x00, 0x08, 0x00, 0x02, 0x44, 0x2B};
 #endif
 #if do_fuvitech
-unsigned char _command_do_fuvitech[8] = {0x01, 0x03, 0x00, 0x00, 0x00, 0x2A, 0xC4, 0x15};
+//unsigned char _command_do_fuvitech[8] = {0x01, 0x03, 0x00, 0x00, 0x00, 0x2A, 0xC4, 0x15};
+unsigned char _command_do_fuvitech[8] = {0x01, 0x03, 0x00, 0x10, 0x00, 0x08, 0x45, 0xC9};
 #endif
 
 float read_ph_fuvitech(uint8_t *data, char * data_log) {
@@ -102,15 +103,10 @@ float read_sensor_fuvitech(uint8_t *data, char * data_log) {
 	  data_ec_fuvitech = ieee754_to_float(reordered_data);
   }
   if(rx_buffer_fuvitech[0]==1&&rx_buffer_fuvitech[1]==3){
-	  data_ec_fuvitech = (rx_buffer_fuvitech[43]<<8| rx_buffer_fuvitech[44]);
+//	  data_ec_fuvitech = (rx_buffer_fuvitech[43]<<8| rx_buffer_fuvitech[44]);
+	  data_ec_fuvitech = (rx_buffer_fuvitech[11]<<8| rx_buffer_fuvitech[12]);
   }
-  memset(rx_buffer_fuvitech, '\0', 100);
-//  if(data_ec_fuvitech==0){
-//	  HAL_GPIO_WritePin(GPIOA, ENABLE_SENSOR_Pin, GPIO_PIN_RESET);
-//	  HAL_Delay(1000);
-//	  HAL_GPIO_WritePin(GPIOA, ENABLE_SENSOR_Pin, GPIO_PIN_SET);
-//	  HAL_Delay(500);
-//  }
+//  memset(rx_buffer_fuvitech, '\0', 100);
   return data_ec_fuvitech;
 }
 

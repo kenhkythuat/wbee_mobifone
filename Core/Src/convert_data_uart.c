@@ -15,6 +15,7 @@
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart4;
+extern bool is_publish_data_lcd;
 char rx_buffer_ec[20];
 char rx_buffer_ph[20];
 char rx_buffer_do[100];
@@ -45,6 +46,8 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
       if (rx_buffer[(i + 31)] == 49 && is_pb_done == true)
 #elif SIMCOM_MODEL == a7670sa
       if (rx_buffer[(i + 29)] == 49 && is_pb_done == true)
+#elif SIMCOM_MODEL == a7680
+      if (rx_buffer[(i + 29)] == 49 && is_pb_done == true)
 #endif
       {
         printf("-----------ON RELAY %d -----------\r\n", payLoadPin);
@@ -66,7 +69,8 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
         	__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3, duty_cycles_x);
         	motor_ph_2=1;
         }
-
+        sprintf(tx5_status_pump,data_status_pump,motor_ec,motor_ph_1,motor_ph_2);
+        is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
       }
 
 #if SIMCOM_MODEL == a7672s
@@ -74,6 +78,8 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
 #elif SIMCOM_MODEL == a7670c
       if (rx_buffer[(i + 31)] == 48 && is_pb_done == true)
 #elif SIMCOM_MODEL == a7670sa
+      if (rx_buffer[(i + 29)] == 48 && is_pb_done == true)
+#elif SIMCOM_MODEL == a7680
       if (rx_buffer[(i + 29)] == 48 && is_pb_done == true)
 #endif
       {
@@ -90,11 +96,13 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
         	HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
         	motor_ph_2=0;
         }
+        sprintf(tx5_status_pump,data_status_pump,motor_ec,motor_ph_1,motor_ph_2);
+        is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
       }
+
     }
   }
 #endif
-    HAL_UARTEx_ReceiveToIdle_IT(&huart1, (uint8_t *)rx_buffer, 700);
     if ((strstr((char *)rx_buffer, "+CMQTTCONNLOST") != NULL) && is_pb_done == true) {
       printf("--------------Client Disconnect passively!---------------\n");
       current_status_simcom = On;
@@ -108,4 +116,5 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
     HAL_UARTEx_ReceiveToIdle_IT(&huart4, (uint8_t *)rx_buffer_ph, 20);
   }
   memset(rx_buffer, '\0', 700);
+  HAL_UARTEx_ReceiveToIdle_IT(&huart1, (uint8_t *)rx_buffer, 700);
 }
