@@ -90,9 +90,11 @@ extern float data_salinity_ec_fuvitech;
 extern float data_dissolved_oxygen_fuvitech;
 
 extern bool is_pb_done;
-extern bool motor_ph_1;
-extern bool motor_ph_2;
-extern bool motor_ec;
+extern bool motor_ph_plus;
+extern bool motor_ph_minus;
+extern bool motor_x;
+
+extern bool is_publish_data_lcd;
 
 
 /* USER CODE END EM */

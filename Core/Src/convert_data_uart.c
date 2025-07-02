@@ -20,7 +20,7 @@ char rx_buffer_ec[20];
 char rx_buffer_ph[20];
 char rx_buffer_do[100];
 char rx_buffer_fuvitech[100];
-char data_status_pump[50]="{\"1\":%d,\"2\":%d,\"3\":%d}";
+char data_status_pump[50]="{\"deviceID\":\"%s\",\"1\":%d,\"2\":%d,\"3\":%d}";
 char tx5_status_pump[50];
 
 uint8_t payLoadPin;
@@ -53,23 +53,23 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
         printf("-----------ON RELAY %d -----------\r\n", payLoadPin);
         if(payLoadPin==1)
         {
-        	 HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
-        	__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3, duty_cycles_ec);
-        	motor_ec=1;
+			 HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_4);
+			__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3, duty_cycles_ph);
+			motor_ph_plus=1;
         }
         if(payLoadPin==2)
         {
-        	 HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_4);
-        	__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3, duty_cycles_ph);
-        	motor_ph_1=1;
+			 HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
+			__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3, duty_cycles_ec);
+			motor_ph_minus=1;
         }
         if(payLoadPin==3)
         {
         	 HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
         	__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3, duty_cycles_x);
-        	motor_ph_2=1;
+        	motor_x=1;
         }
-        sprintf(tx5_status_pump,data_status_pump,motor_ec,motor_ph_1,motor_ph_2);
+        sprintf(tx5_status_pump,data_status_pump,SERIAL_NUMBER,motor_ph_plus,motor_ph_minus,motor_x);
         is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
       }
 
@@ -85,18 +85,18 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
       {
         printf("-----------OFF RELAY %d -----------\r\n", payLoadPin);
         if(payLoadPin==1){
-        	HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_3);
-        	motor_ec=0;
+        	HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_4);
+        	motor_ph_plus=0;
         }
         if(payLoadPin==2){
-        	HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_4);
-        	motor_ph_1=0;
+        	HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_3);
+        	motor_ph_minus=0;
         }
         if(payLoadPin==3){
         	HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
-        	motor_ph_2=0;
+        	motor_x=0;
         }
-        sprintf(tx5_status_pump,data_status_pump,motor_ec,motor_ph_1,motor_ph_2);
+        sprintf(tx5_status_pump,data_status_pump,SERIAL_NUMBER,motor_ph_plus,motor_ph_minus,motor_x);
         is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
       }
 

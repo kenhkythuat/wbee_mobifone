@@ -27,13 +27,13 @@
 
 // Serial number. Must be lower case.
 #ifndef SERIAL_NUMBER
-  #define SERIAL_NUMBER "hb000999"
+  #define SERIAL_NUMBER "hb000077"
 #endif
 
 #define true 1
 #define false 0
 
-#define ph_fuvitech false
+#define ph_fuvitech true
 #define ec_fuvitech false
 #define do_fuvitech true
 

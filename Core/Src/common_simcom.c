@@ -58,9 +58,9 @@ int rssi = -99;
 uint16_t frequency_1hz = 0;
 bool to_send_status_to_server = false;
 
-bool motor_ph_1=false;
-bool motor_ph_2=false;
-bool motor_ec=false;
+bool motor_ph_plus =false;
+bool motor_ph_minus=false;
+bool motor_x=false;
 
 uint16_t frequency_1hz_timer2;
 
@@ -467,9 +467,9 @@ void create_JSON(void) {
 void create_Json_status_motor(void)
 {
 	  cJSON *json = cJSON_CreateObject();
-	  cJSON_AddNumberToObject(json, "1", motor_ec);
-	  cJSON_AddNumberToObject(json, "2", motor_ph_1);
-	  cJSON_AddNumberToObject(json, "3", motor_ph_2);
+	  cJSON_AddNumberToObject(json, "1", motor_ph_plus);
+	  cJSON_AddNumberToObject(json, "2", motor_ph_minus);
+	  cJSON_AddNumberToObject(json, "3", motor_x);
 
 	  char *json_string = cJSON_PrintUnformatted(json);
 	  if (json_string == NULL) {
@@ -777,7 +777,7 @@ void check_handle_state(enum GmsModemState status) {
       is_updated_status = send_payload_signal_to_server();
       is_publish_data_lcd = update_data_to_sreen((uint8_t *)array_json);
       is_updated_status= publish_mqtt_motor_status();
-      sprintf(tx5_status_pump,data_status_pump,motor_ec,motor_ph_1,motor_ph_2);
+      sprintf(tx5_status_pump,data_status_pump,SERIAL_NUMBER,motor_ph_plus,motor_ph_minus,motor_x);
       is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
       if (is_updated_status) {
         to_send_status_to_server = 0;

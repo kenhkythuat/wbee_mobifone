@@ -106,7 +106,6 @@ float read_sensor_fuvitech(uint8_t *data, char * data_log) {
 //	  data_ec_fuvitech = (rx_buffer_fuvitech[43]<<8| rx_buffer_fuvitech[44]);
 	  data_ec_fuvitech = (rx_buffer_fuvitech[11]<<8| rx_buffer_fuvitech[12]);
   }
-//  memset(rx_buffer_fuvitech, '\0', 100);
   return data_ec_fuvitech;
 }
 
