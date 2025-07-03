@@ -92,17 +92,19 @@ float read_ph_fuvitech(uint8_t *data, char * data_log) {
 float read_sensor_fuvitech(uint8_t *data, char * data_log) {
   printf("Read sensor %s\r\n",data_log);
   data_ec_fuvitech=0;
+  memset(rx_buffer_fuvitech, '\0', 100);
+  HAL_Delay(100);
   HAL_UART_Transmit(&huart2, data, 8, 500);
-  HAL_Delay(500);
+  HAL_Delay(300);
   if(rx_buffer_fuvitech[0]==2&&rx_buffer_fuvitech[1]==3&&rx_buffer_fuvitech[2]==4){
 	  uint8_t reordered_data[4] = {rx_buffer_fuvitech[5], rx_buffer_fuvitech[6], rx_buffer_fuvitech[3], rx_buffer_fuvitech[4]};
 	  data_ec_fuvitech = ieee754_to_float(reordered_data);
   }
-  if(rx_buffer_fuvitech[0]==3&&rx_buffer_fuvitech[1]==3&&rx_buffer_fuvitech[2]==4){
+  else if(rx_buffer_fuvitech[0]==3&&rx_buffer_fuvitech[1]==3&&rx_buffer_fuvitech[2]==4){
 	  uint8_t reordered_data[4] = {rx_buffer_fuvitech[5], rx_buffer_fuvitech[6], rx_buffer_fuvitech[3], rx_buffer_fuvitech[4]};
 	  data_ec_fuvitech = ieee754_to_float(reordered_data);
   }
-  if(rx_buffer_fuvitech[0]==1&&rx_buffer_fuvitech[1]==3){
+  else if(rx_buffer_fuvitech[0]==1&&rx_buffer_fuvitech[1]==3){
 //	  data_ec_fuvitech = (rx_buffer_fuvitech[43]<<8| rx_buffer_fuvitech[44]);
 	  data_ec_fuvitech = (rx_buffer_fuvitech[11]<<8| rx_buffer_fuvitech[12]);
   }
