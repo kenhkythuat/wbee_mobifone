@@ -81,7 +81,7 @@ extern uint8_t total_errors;
 extern float data_measured_ph_fuvitech;
 extern float data_temperature_ph_fuvitech;
 // data EC Fuvitech
-extern float data_ec_fuvitech;
+extern float data_common_sensor_fuvitech;
 extern float data_conductivity_ec_fuvitech;
 extern float data_resistivity_ec_fuvitech;
 extern float data_temperateure_ec_fuvitech;

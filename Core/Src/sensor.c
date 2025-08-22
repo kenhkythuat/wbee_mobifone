@@ -23,7 +23,7 @@ float data_ph_fuvitech;
 float data_measured_ph_fuvitech;
 float data_temperature_ph_fuvitech;
 // data EC Fuvitech
-float data_ec_fuvitech;
+float data_common_sensor_fuvitech;
 float data_conductivity_ec_fuvitech;
 float data_resistivity_ec_fuvitech;
 float data_temperateure_ec_fuvitech;
@@ -34,6 +34,9 @@ float data_salinity_ec_fuvitech;
 float data_do_fuvitech;
 float data_dissolved_oxygen_fuvitech;
 float data_temperature_do_fuvitech;
+uint8_t check_sensor_ph_error=0;
+uint8_t check_sensor_ec_error=0;
+uint8_t check_sensor_do_error=0;
 
 float ieee754_to_float(unsigned char *bytes) {
   uint32_t int_representation = 0;
@@ -90,29 +93,54 @@ float read_ph_fuvitech(uint8_t *data, char * data_log) {
 
 float read_sensor_fuvitech(uint8_t *data, char * data_log) {
   printf("Read sensor %s\r\n",data_log);
-  data_ec_fuvitech=0;
+  data_common_sensor_fuvitech=0;
   memset(rx_buffer_fuvitech, '\0', 100);
   HAL_Delay(100);
   HAL_UART_Transmit(&huart2, data, 8, 500);
-  HAL_Delay(300);
+  HAL_Delay(500);
 #if ph_fuvitech
   if(rx_buffer_fuvitech[0]==2&&rx_buffer_fuvitech[1]==3&&rx_buffer_fuvitech[2]==4){
 	  uint8_t reordered_data[4] = {rx_buffer_fuvitech[5], rx_buffer_fuvitech[6], rx_buffer_fuvitech[3], rx_buffer_fuvitech[4]};
-	  data_ec_fuvitech = ieee754_to_float(reordered_data);
+	  data_common_sensor_fuvitech = ieee754_to_float(reordered_data);
+	  if(data_common_sensor_fuvitech==0){
+	      check_sensor_ph_error++;
+	  }
+	  else
+	    check_sensor_ph_error=0;
+	  if(check_sensor_ph_error>=5){
+	     NVIC_SystemReset();
+	  }
   }
 #endif
 #if ec_fuvitech
   if(rx_buffer_fuvitech[0]==3&&rx_buffer_fuvitech[1]==3&&rx_buffer_fuvitech[2]==4){
 	  uint8_t reordered_data[4] = {rx_buffer_fuvitech[5], rx_buffer_fuvitech[6], rx_buffer_fuvitech[3], rx_buffer_fuvitech[4]};
-	  data_ec_fuvitech = ieee754_to_float(reordered_data);
+	  data_common_sensor_fuvitech = ieee754_to_float(reordered_data);
+	  if(data_common_sensor_fuvitech==0){
+	      check_sensor_ec_error++;
+	  }
+	  else
+	    check_sensor_ec_error=0;
+	  if(check_sensor_ec_error>=5){
+	     NVIC_SystemReset();
+	  }
   }
 #endif
 #if do_fuvitech
   if(rx_buffer_fuvitech[0]==1&&rx_buffer_fuvitech[1]==3){
-	  data_ec_fuvitech = (rx_buffer_fuvitech[11]<<8| rx_buffer_fuvitech[12]);
+	  data_common_sensor_fuvitech = (rx_buffer_fuvitech[11]<<8| rx_buffer_fuvitech[12]);
+	  if(data_common_sensor_fuvitech==0){
+	      check_sensor_do_error++;
+	  }
+	  else
+	    check_sensor_do_error=0;
+	  if(check_sensor_do_error>=3){
+	     NVIC_SystemReset();
+	  }
   }
 #endif
-  return data_ec_fuvitech;
+
+  return data_common_sensor_fuvitech;
 }
 
 float read_do_fuvitech(uint8_t *data) {
