@@ -34,9 +34,7 @@ float data_salinity_ec_fuvitech;
 float data_do_fuvitech;
 float data_dissolved_oxygen_fuvitech;
 float data_temperature_do_fuvitech;
-uint8_t check_sensor_ph_error=0;
-uint8_t check_sensor_ec_error=0;
-uint8_t check_sensor_do_error=0;
+
 
 float ieee754_to_float(unsigned char *bytes) {
   uint32_t int_representation = 0;
@@ -102,28 +100,12 @@ float read_sensor_fuvitech(uint8_t *data, char * data_log) {
   if(rx_buffer_fuvitech[0]==2&&rx_buffer_fuvitech[1]==3&&rx_buffer_fuvitech[2]==4){
 	  uint8_t reordered_data[4] = {rx_buffer_fuvitech[5], rx_buffer_fuvitech[6], rx_buffer_fuvitech[3], rx_buffer_fuvitech[4]};
 	  data_common_sensor_fuvitech = ieee754_to_float(reordered_data);
-	  if(data_common_sensor_fuvitech==0){
-	      check_sensor_ph_error++;
-	  }
-	  else
-	    check_sensor_ph_error=0;
-	  if(check_sensor_ph_error>=5){
-	     NVIC_SystemReset();
-	  }
   }
 #endif
 #if ec_fuvitech
   if(rx_buffer_fuvitech[0]==3&&rx_buffer_fuvitech[1]==3&&rx_buffer_fuvitech[2]==4){
 	  uint8_t reordered_data[4] = {rx_buffer_fuvitech[5], rx_buffer_fuvitech[6], rx_buffer_fuvitech[3], rx_buffer_fuvitech[4]};
 	  data_common_sensor_fuvitech = ieee754_to_float(reordered_data);
-	  if(data_common_sensor_fuvitech==0){
-	      check_sensor_ec_error++;
-	  }
-	  else
-	    check_sensor_ec_error=0;
-	  if(check_sensor_ec_error>=5){
-	     NVIC_SystemReset();
-	  }
   }
 #endif
 #if do_fuvitech

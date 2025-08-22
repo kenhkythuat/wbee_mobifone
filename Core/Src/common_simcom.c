@@ -65,6 +65,10 @@ bool motor_x=false;
 uint16_t frequency_1hz_timer2;
 
 bool is_publish_data_lcd = false;
+
+uint8_t check_sensor_ph_error=0;
+uint8_t check_sensor_ec_error=0;
+uint8_t check_sensor_do_error=0;
 /* USER CODE END 0 */
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
@@ -424,6 +428,16 @@ void create_JSON(void) {
 
 #if ph_fuvitech
   // data PH Fuvitech
+  if(data_measured_ph_fuvitech<1){
+      check_sensor_ph_error++;
+  }
+  else{
+      check_sensor_ph_error=0;
+  }
+  if(check_sensor_ph_error>=3){
+      NVIC_SystemReset();
+  }
+
   char data_measured_ph_fuvitech_str[16];
   char data_temperature_ph_fuvitech_str[16];
   snprintf(data_measured_ph_fuvitech_str, sizeof(data_measured_ph_fuvitech_str), "%.2f", data_measured_ph_fuvitech);
@@ -432,6 +446,15 @@ void create_JSON(void) {
   cJSON_AddStringToObject(json, "solT", data_temperature_ph_fuvitech_str);
 #endif
 #if ec_fuvitech
+  if(data_conductivity_ec_fuvitech<1){
+      check_sensor_ec_error++;
+  }
+  else{
+      check_sensor_ec_error=0;
+  }
+  if(check_sensor_ec_error>=3){
+      NVIC_SystemReset();
+  }
   char data_conductivity_ec_fuvitech_str[16];
   char data_tds_ec_fuvitech_str[16];
   char data_resistivity_ec_fuvitech_str[16];
@@ -448,6 +471,15 @@ void create_JSON(void) {
 #endif
 #if do_fuvitech
   //   data DO Fuvitech
+  if(data_dissolved_oxygen_fuvitech<1){
+      check_sensor_do_error++;
+  }
+  else{
+      check_sensor_do_error=0;
+  }
+  if(check_sensor_do_error>=3){
+      NVIC_SystemReset();
+  }
   char data_dissolved_oxygen_str[16];
   snprintf(data_dissolved_oxygen_str, sizeof(data_dissolved_oxygen_str), "%.2f", data_dissolved_oxygen_fuvitech);
   cJSON_AddStringToObject(json, "solDO", data_dissolved_oxygen_str);
