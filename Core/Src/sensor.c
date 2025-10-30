@@ -99,7 +99,7 @@ float read_sensor_fuvitech(uint8_t *data, char * data_log) {
 #if ph_fuvitech
   if(rx_buffer_fuvitech[0]==2&&rx_buffer_fuvitech[1]==3&&rx_buffer_fuvitech[2]==4){
 	  uint8_t reordered_data[4] = {rx_buffer_fuvitech[5], rx_buffer_fuvitech[6], rx_buffer_fuvitech[3], rx_buffer_fuvitech[4]};
-	  data_common_sensor_fuvitech = ieee754_to_float(reordered_data);
+	  data_common_sensor_fuvitech = (ieee754_to_float(reordered_data)+2);
   }
 #endif
 #if ec_fuvitech

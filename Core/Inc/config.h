@@ -21,13 +21,13 @@
 #define a7080 4  // NB-IOT
 #define a7680 5  // 4G
 
-#define SIMCOM_MODEL a7670c // #default is a7670 if you use model other please choose enter your model
+#define SIMCOM_MODEL a7680 // #default is a7670 if you use model other please choose enter your model
 #define SAVE_LOAD false
 #define INTERVAL_PUPLISH_DATA 7 // the time the device sends data to the server, If the sending time is over 60 seconds, the sensor will go into deep sleep.
 
 // Serial number. Must be lower case.
 #ifndef SERIAL_NUMBER
-  #define SERIAL_NUMBER "hb000028"
+  #define SERIAL_NUMBER "hb000030"
 #endif
 
 #define true 1
@@ -47,7 +47,7 @@
 //#define MQTT_USER "node" 		// User - connect to MQTT broker
 //#define MQTT_PASS "654321"		// Password - connect to MQTT broker
 
-#define FARM "dualeo-ahbi"
+#define FARM "hoithao"
 #define MQTT_USER "mqttnode"       // User - connect to MQTT broker
 #define MQTT_PASS "congamo"		// Password - connect to MQTT broker
 
