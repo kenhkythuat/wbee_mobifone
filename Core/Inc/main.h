@@ -96,6 +96,10 @@ extern bool motor_x;
 
 extern bool is_publish_data_lcd;
 
+extern uint8_t check_sensor_ph_error;
+extern uint8_t check_sensor_ec_error;
+extern uint8_t check_sensor_do_error;
+
 
 /* USER CODE END EM */
 

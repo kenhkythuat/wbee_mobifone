@@ -33,12 +33,12 @@
 #define true 1
 #define false 0
 
-#define ph_fuvitech false
+#define ph_fuvitech true
 #define ec_fuvitech false
-#define do_fuvitech false
+#define do_fuvitech true
 
-#define ph_rika500_12 true
-#define ec_rika500_13 true
+#define ph_rika500_12 false
+#define ec_rika500_13 false
 
 #define duty_cycles_ph 99
 #define duty_cycles_ec 99
