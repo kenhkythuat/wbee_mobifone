@@ -443,7 +443,7 @@ void create_JSON(void) {
   snprintf(data_measured_ph_fuvitech_str, sizeof(data_measured_ph_fuvitech_str), "%.2f", data_measured_ph_fuvitech);
   snprintf(data_temperature_ph_fuvitech_str, sizeof(data_temperature_ph_fuvitech_str), "%.2f", data_temperature_ph_fuvitech);
   cJSON_AddStringToObject(json, "solPH", data_measured_ph_fuvitech_str);
-  //cJSON_AddStringToObject(json, "solT", data_temperature_ph_fuvitech_str);
+  cJSON_AddStringToObject(json, "solT", data_temperature_ph_fuvitech_str);
 #endif
 #if ph_rika500_12
   // data PH Fuvitech
@@ -462,7 +462,7 @@ void create_JSON(void) {
   snprintf(data_measured_ph_fuvitech_str, sizeof(data_measured_ph_fuvitech_str), "%.2f", data_measured_ph_fuvitech);
   snprintf(data_temperature_ph_fuvitech_str, sizeof(data_temperature_ph_fuvitech_str), "%.2f", data_temperature_ph_fuvitech);
   cJSON_AddStringToObject(json, "solPH", data_measured_ph_fuvitech_str);
-  //cJSON_AddStringToObject(json, "solT", data_temperature_ph_fuvitech_str);
+  cJSON_AddStringToObject(json, "solT", data_temperature_ph_fuvitech_str);
 #endif
 #if ec_fuvitech
   if(data_conductivity_ec_fuvitech<1){
@@ -510,7 +510,7 @@ void create_JSON(void) {
   //   data EC Fuvitech
   cJSON_AddStringToObject(json, "solEC", data_conductivity_ec_fuvitech_str);
   cJSON_AddStringToObject(json, "solRes", data_resistivity_ec_fuvitech_str);
-  cJSON_AddStringToObject(json, "solT", data_temperature_ec_fuvitech_str);
+//  cJSON_AddStringToObject(json, "solT", data_temperature_ec_fuvitech_str);
 #endif
 #if do_fuvitech
   //   data DO Fuvitech
