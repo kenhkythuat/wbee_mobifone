@@ -99,6 +99,7 @@ extern bool is_publish_data_lcd;
 extern uint8_t check_sensor_ph_error;
 extern uint8_t check_sensor_ec_error;
 extern uint8_t check_sensor_do_error;
+extern uint8_t is_init_setup_do;
 
 
 /* USER CODE END EM */

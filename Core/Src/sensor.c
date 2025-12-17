@@ -34,6 +34,7 @@ float data_salinity_ec_fuvitech;
 float data_do_fuvitech;
 float data_dissolved_oxygen_fuvitech;
 float data_temperature_do_fuvitech;
+uint8_t is_init_setup_do=0;
 
 // data PH Rika500_12
 float data_ph_rika500_12;
@@ -89,6 +90,7 @@ unsigned char salinity_command_ec_fuvitech[8] = {0x03, 0x03, 0x00, 0x08, 0x00, 0
 #endif
 #if do_fuvitech
 unsigned char _command_do_fuvitech[8] = {0x01, 0x03, 0x00, 0x10, 0x00, 0x08, 0x45, 0xC9};
+unsigned char _command_setup_do_fuvitech[13] = {0x01, 0x10, 0x00, 0x00, 0x00, 0x02, 0x04, 0x00, 0x05, 0x00, 0x1E, 0x63, 0x36};
 #endif
 #if ph_rika500_12
 unsigned char measured_command_ph_rika500_12[8] = {0x05, 0x03, 0x00, 0x00, 0x00, 0x02, 0xC5, 0x8F};
@@ -201,6 +203,11 @@ void read_sensor(void) {
 
 #endif
 #if do_fuvitech
+  if(!is_init_setup_do){
+	  float is_setup_do = read_sensor_fuvitech(_command_setup_do_fuvitech,"DO");
+	  is_init_setup_do=1;
+	  HAL_Delay(500);
+  }
   data_dissolved_oxygen_fuvitech = read_sensor_fuvitech(_command_do_fuvitech,"DO")/100;
 #endif
 }

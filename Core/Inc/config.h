@@ -27,7 +27,7 @@
 
 // Serial number. Must be lower case.
 #ifndef SERIAL_NUMBER
-  #define SERIAL_NUMBER "hb000032"
+  #define SERIAL_NUMBER "hb000017"
 #endif
 
 #define true 1
@@ -35,10 +35,10 @@
 
 #define ph_fuvitech false
 #define ec_fuvitech false
-#define do_fuvitech false
+#define do_fuvitech true
 
-#define ph_rika500_12 true
-#define ec_rika500_13 true
+#define ph_rika500_12 false
+#define ec_rika500_13 false
 
 #define duty_cycles_ph 30
 #define duty_cycles_ec 30
@@ -50,7 +50,7 @@
 //#define MQTT_USER "node" 		// User - connect to MQTT broker
 //#define MQTT_PASS "654321"		// Password - connect to MQTT broker
 
-#define FARM "queen-ecosmart-farm"
+#define FARM "hangduongfarm-minhhuyagri"
 #define MQTT_USER "mqttnode"       // User - connect to MQTT broker
 #define MQTT_PASS "congamo"		// Password - connect to MQTT broker
 
