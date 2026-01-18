@@ -37,6 +37,11 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
+#define RX_IDLE_BUF_SZ   128
+#define RX_LINE_MAX      256
+
+#define OFFLINE      0
+#define ONLINE      1
 
 /* USER CODE END ET */
 
@@ -50,6 +55,20 @@ extern DMA_HandleTypeDef hdma_adc1;
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
+typedef enum {
+    PH_ZONE_OK = 0,     // trong ngưỡng: cả 2 OFF
+    PH_ZONE_LOW,        // pH < ph_low : bazo chạy theo lịch
+    PH_ZONE_HIGH        // pH > ph_high: acid chạy theo lịch
+} ph_zone_t;
+
+typedef struct {
+    float    ph_high;
+    float    ph_low;
+    uint32_t time_off;
+    uint32_t time_on;
+    uint32_t pump_power;
+    uint32_t control_mode;
+} ph_ctrl_cfg_t;
 enum GmsModemState
 {
 	Off,
@@ -59,7 +78,8 @@ enum GmsModemState
 	Subscribed,
 	UpdateToServer,
 	DisconnectMqtt,
-	SleepStm32
+	SleepStm32,
+	ControlModeOffline
 };
 extern enum GmsModemState current_status_simcom;
 extern char rx_buffer[700];
@@ -76,6 +96,8 @@ extern uint16_t adc_pin_valve;
 extern float data_percentage_pin;
 extern uint16_t frequency_1hz;
 extern bool to_send_status_to_server;
+extern volatile uint32_t g_control_mode;
+//extern volatile bool control_mode;
 extern uint8_t total_errors;
 // data EC Fuvitech
 extern float data_measured_ph_fuvitech;
@@ -90,8 +112,8 @@ extern float data_salinity_ec_fuvitech;
 extern float data_dissolved_oxygen_fuvitech;
 
 extern bool is_pb_done;
-extern bool motor_ph_plus;
-extern bool motor_ph_minus;
+extern volatile uint8_t motor_ph_plus;
+extern volatile uint8_t motor_ph_minus;
 extern bool motor_x;
 
 extern bool is_publish_data_lcd;
@@ -101,6 +123,11 @@ extern uint8_t check_sensor_ec_error;
 extern uint8_t check_sensor_do_error;
 extern uint8_t is_init_setup_do;
 
+extern uint8_t  rx_idle_buf[RX_IDLE_BUF_SZ];
+
+extern volatile uint16_t g_rx_len;
+extern volatile uint8_t  g_rx_flag;      // cờ báo có dữ liệu mới
+extern char g_rx_line[RX_LINE_MAX];          // chuỗi nhận được (null-terminated)
 
 /* USER CODE END EM */
 
@@ -116,7 +143,10 @@ bool check_signal_simcom(void);
 float read_level_pin(void);
 void read_sensor(void);
 extern bool update_data_to_sreen(uint8_t *data);
-
+extern void uart5_rx_start_to_idle(void);
+extern void create_JSON(void);
+extern void create_JSON_LCD(void);
+extern void process_uart_rx(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

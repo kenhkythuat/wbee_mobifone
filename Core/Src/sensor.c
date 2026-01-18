@@ -20,7 +20,7 @@ extern UART_HandleTypeDef huart4;
 /* USER CODE END EM */
 // data PH Fuvitech
 float data_ph_fuvitech;
-float data_measured_ph_fuvitech;
+float data_measured_ph_fuvitech=0;
 float data_temperature_ph_fuvitech;
 // data EC Fuvitech
 float data_common_sensor_fuvitech;
@@ -90,7 +90,7 @@ unsigned char salinity_command_ec_fuvitech[8] = {0x03, 0x03, 0x00, 0x08, 0x00, 0
 #endif
 #if do_fuvitech
 unsigned char _command_do_fuvitech[8] = {0x01, 0x03, 0x00, 0x10, 0x00, 0x08, 0x45, 0xC9};
-unsigned char _command_setup_do_fuvitech[13] = {0x01, 0x10, 0x00, 0x00, 0x00, 0x02, 0x04, 0x00, 0x05, 0x00, 0x1E, 0x63, 0x36};
+unsigned char _command_setup_do_fuvitech[13] = {0x01, 0x10, 0x00, 0x00, 0x00, 0x02, 0x04, 0x00, 0x05, 0x00, 0x1E, 0x63, 0xA6};
 #endif
 #if ph_rika500_12
 unsigned char measured_command_ph_rika500_12[8] = {0x05, 0x03, 0x00, 0x00, 0x00, 0x02, 0xC5, 0x8F};
@@ -153,6 +153,7 @@ float read_sensor_fuvitech(uint8_t *data, char * data_log) {
 #endif
 #if do_fuvitech
   if(rx_buffer_fuvitech[0]==1&&rx_buffer_fuvitech[1]==3){
+	  printf("Parse rx data DO\r\n");
 	  data_common_sensor_fuvitech = (rx_buffer_fuvitech[11]<<8| rx_buffer_fuvitech[12]);
 	  if(data_common_sensor_fuvitech==0){
 	      check_sensor_do_error++;
@@ -179,6 +180,7 @@ float read_do_fuvitech(uint8_t *data) {
 
 void read_sensor(void) {
   // read PH Fuvitech
+	for(int i=0;i<2;i++){
 #if ph_fuvitech
   data_measured_ph_fuvitech = read_sensor_fuvitech(measured_command_ph_fuvitech,"PH");
   data_temperature_ph_fuvitech = read_sensor_fuvitech(temperature_command_ph_fuvitech,"PH");
@@ -204,10 +206,11 @@ void read_sensor(void) {
 #endif
 #if do_fuvitech
   if(!is_init_setup_do){
-	  float is_setup_do = read_sensor_fuvitech(_command_setup_do_fuvitech,"DO");
+	  int is_setup_do = read_sensor_fuvitech(_command_setup_do_fuvitech,"DO");
 	  is_init_setup_do=1;
 	  HAL_Delay(500);
   }
   data_dissolved_oxygen_fuvitech = read_sensor_fuvitech(_command_do_fuvitech,"DO")/100;
 #endif
+	}
 }

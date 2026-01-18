@@ -23,26 +23,26 @@
 
 #define SIMCOM_MODEL a7680 // #default is a7670 if you use model other please choose enter your model
 #define SAVE_LOAD false
-#define INTERVAL_PUPLISH_DATA 7 // the time the device sends data to the server, If the sending time is over 60 seconds, the sensor will go into deep sleep.
+#define INTERVAL_PUPLISH_DATA 10 // the time the device sends data to the server, If the sending time is over 60 seconds, the sensor will go into deep sleep.
 
 // Serial number. Must be lower case.
 #ifndef SERIAL_NUMBER
-  #define SERIAL_NUMBER "hb000017"
+  #define SERIAL_NUMBER "hb000020"
 #endif
 
 #define true 1
 #define false 0
 
-#define ph_fuvitech false
+#define ph_fuvitech true
 #define ec_fuvitech false
 #define do_fuvitech true
 
 #define ph_rika500_12 false
 #define ec_rika500_13 false
 
-#define duty_cycles_ph 30
-#define duty_cycles_ec 30
-#define duty_cycles_x 30
+#define duty_cycles_ph 18
+#define duty_cycles_ec 15
+#define duty_cycles_x 50
 
 
 
@@ -50,7 +50,7 @@
 //#define MQTT_USER "node" 		// User - connect to MQTT broker
 //#define MQTT_PASS "654321"		// Password - connect to MQTT broker
 
-#define FARM "hangduongfarm-minhhuyagri"
+#define FARM "gateway-agriconnect"
 #define MQTT_USER "mqttnode"       // User - connect to MQTT broker
 #define MQTT_PASS "congamo"		// Password - connect to MQTT broker
 

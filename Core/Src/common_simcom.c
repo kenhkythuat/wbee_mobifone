@@ -12,6 +12,8 @@
 #include "string.h"
 #include <main.h>
 #include <stdbool.h>
+#include "ph_pump_scheduler.h"
+#include "ph_pump_isr.h"
 
 /* Private variables ---------------------------------------------------------*/
 extern UART_HandleTypeDef huart1;
@@ -24,6 +26,7 @@ char array_at_command[400];
 char array_json[400];
 
 char test_lcd[10]="hello";
+ph_ctrl_cfg_t g_cfg_simcom;
 
 int previousTick;
 bool is_pb_done = false;
@@ -48,7 +51,8 @@ bool is_at_disconnect_mqtt = false;
 bool is_at_rel_mqtt = false;
 bool is_at_stop_mqtt = false;
 bool is_inital_check = false;
-bool to_send_status_to_server;
+bool to_send_status_to_server = false;
+//volatile bool control_mode;
 
 uint16_t count_errors = 0;
 int timeout_pb_done = 60000;
@@ -56,10 +60,10 @@ int is_connect_simcom = 0;
 int rssi = -99;
 
 uint16_t frequency_1hz = 0;
-bool to_send_status_to_server = false;
 
-bool motor_ph_plus =false;
-bool motor_ph_minus=false;
+
+volatile uint8_t motor_ph_plus =false;
+volatile uint8_t motor_ph_minus=false;
 bool motor_x=false;
 
 uint16_t frequency_1hz_timer2;
@@ -71,23 +75,28 @@ uint8_t check_sensor_ec_error=0;
 uint8_t check_sensor_do_error=0;
 /* USER CODE END 0 */
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-  if (htim->Instance == htim6.Instance) {
-    if (current_status_simcom == Subscribed) {
-      frequency_1hz++;
-      if (frequency_1hz >= INTERVAL_PUPLISH_DATA) {
-        to_send_status_to_server = 1;
-        frequency_1hz = 0;
-        printf("Case error log total :%d\r\n", total_errors);
-      }
-    }
-    HAL_TIM_Base_Start_IT(&htim6);
-  }
-  if (htim->Instance == htim3.Instance) {
-	  frequency_1hz_timer2++;
-  }
+//void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+//  if (htim->Instance == htim6.Instance) {
+//    if (current_status_simcom == Off) {
+//      frequency_1hz++;
+//      if (frequency_1hz >= INTERVAL_PUPLISH_DATA) {
+//        current_status_simcom = UpdateToServer;
+//        to_send_status_to_server = 1;
+//        frequency_1hz = 0;
+//        data_measured_ph_fuvitech++;
+//        printf("Case error log total :%d\r\n", total_errors);
+//      }
+//    }
+////    HAL_TIM_Base_Start_IT(&htim6);
+//  }
+//  if (htim->Instance == htim3.Instance) {
+//	  frequency_1hz_timer2++;
+//  }
+//
+//}
 
-}
+
+
 
 void send_to_simcom_a76xx(char *cmd) {
   printf("STM32 Write: %s", cmd);
@@ -425,18 +434,20 @@ void create_JSON(void) {
   data_percentage_pin = read_level_pin();
   cJSON_AddNumberToObject(json, "_gsm_signal_strength", rssi);
   cJSON_AddNumberToObject(json, "_battery_level", data_percentage_pin);
+  cJSON_AddNumberToObject(json, "control_mode", g_control_mode);
+
 
 #if ph_fuvitech
   // data PH Fuvitech
-  if(data_measured_ph_fuvitech<1){
-      check_sensor_ph_error++;
-  }
-  else{
-      check_sensor_ph_error=0;
-  }
-  if(check_sensor_ph_error>=3){
-      NVIC_SystemReset();
-  }
+//  if(data_measured_ph_fuvitech<1){
+//      check_sensor_ph_error++;
+//  }
+//  else{
+//      check_sensor_ph_error=0;
+//  }
+//  if(check_sensor_ph_error>=3){
+//      NVIC_SystemReset();
+//  }
 
   char data_measured_ph_fuvitech_str[16];
   char data_temperature_ph_fuvitech_str[16];
@@ -514,15 +525,135 @@ void create_JSON(void) {
 #endif
 #if do_fuvitech
   //   data DO Fuvitech
-  if(data_dissolved_oxygen_fuvitech<1){
-      check_sensor_do_error++;
+//  if(data_dissolved_oxygen_fuvitech<1){
+//      check_sensor_do_error++;
+//  }
+//  else{
+//      check_sensor_do_error=0;
+//  }
+//  if(check_sensor_do_error>=3){
+//      NVIC_SystemReset();
+//  }
+  char data_dissolved_oxygen_str[16];
+  snprintf(data_dissolved_oxygen_str, sizeof(data_dissolved_oxygen_str), "%.2f", data_dissolved_oxygen_fuvitech);
+  cJSON_AddStringToObject(json, "solDO", data_dissolved_oxygen_str);
+#endif
+  char *json_string = cJSON_PrintUnformatted(json);
+  if (json_string == NULL) {
+    printf("New create error JSON\n");
+    cJSON_Delete(json);
+    return;
+  }
+  sprintf(array_json, "%s", json_string);
+  // decompress memory
+  free(json_string);
+  cJSON_Delete(json);
+}
+void create_JSON_LCD(void) {
+  cJSON *json = cJSON_CreateObject();
+  data_percentage_pin = read_level_pin();
+  cJSON_AddNumberToObject(json, "_gsm_signal_strength", rssi);
+  cJSON_AddNumberToObject(json, "_battery_level", data_percentage_pin);
+  cJSON_AddNumberToObject(json, "control_mode", g_control_mode);
+
+
+#if ph_fuvitech
+  // data PH Fuvitech
+//  if(data_measured_ph_fuvitech<1){
+//      check_sensor_ph_error++;
+//  }
+//  else{
+//      check_sensor_ph_error=0;
+//  }
+//  if(check_sensor_ph_error>=3){
+//      NVIC_SystemReset();
+//  }
+
+  char data_measured_ph_fuvitech_str[16];
+  char data_temperature_ph_fuvitech_str[16];
+  snprintf(data_measured_ph_fuvitech_str, sizeof(data_measured_ph_fuvitech_str), "%.2f", data_measured_ph_fuvitech);
+  snprintf(data_temperature_ph_fuvitech_str, sizeof(data_temperature_ph_fuvitech_str), "%.2f", data_temperature_ph_fuvitech);
+  cJSON_AddStringToObject(json, "solPH", data_measured_ph_fuvitech_str);
+  cJSON_AddStringToObject(json, "solT", data_temperature_ph_fuvitech_str);
+#endif
+#if ph_rika500_12
+  // data PH Fuvitech
+  if(data_measured_ph_fuvitech<1){
+      check_sensor_ph_error++;
   }
   else{
-      check_sensor_do_error=0;
+      check_sensor_ph_error=0;
   }
-  if(check_sensor_do_error>=3){
+  if(check_sensor_ph_error>=3){
       NVIC_SystemReset();
   }
+
+  char data_measured_ph_fuvitech_str[16];
+  char data_temperature_ph_fuvitech_str[16];
+  snprintf(data_measured_ph_fuvitech_str, sizeof(data_measured_ph_fuvitech_str), "%.2f", data_measured_ph_fuvitech);
+  snprintf(data_temperature_ph_fuvitech_str, sizeof(data_temperature_ph_fuvitech_str), "%.2f", data_temperature_ph_fuvitech);
+  cJSON_AddStringToObject(json, "solPH", data_measured_ph_fuvitech_str);
+  cJSON_AddStringToObject(json, "solT", data_temperature_ph_fuvitech_str);
+#endif
+#if ec_fuvitech
+  if(data_conductivity_ec_fuvitech<1){
+      check_sensor_ec_error++;
+  }
+  else{
+      check_sensor_ec_error=0;
+  }
+  if(check_sensor_ec_error>=3){
+      NVIC_SystemReset();
+  }
+  char data_conductivity_ec_fuvitech_str[16];
+  char data_tds_ec_fuvitech_str[16];
+  char data_resistivity_ec_fuvitech_str[16];
+  char data_salinity_ec_fuvitech_str[16];
+  char data_temperature_ec_fuvitech_str[16];
+  snprintf(data_conductivity_ec_fuvitech_str, sizeof(data_conductivity_ec_fuvitech_str), "%.2f", data_conductivity_ec_fuvitech);
+  snprintf(data_tds_ec_fuvitech_str, sizeof(data_tds_ec_fuvitech_str), "%.2f", data_tds_ec_fuvitech);
+  snprintf(data_resistivity_ec_fuvitech_str, sizeof(data_resistivity_ec_fuvitech_str), "%.2f", data_resistivity_ec_fuvitech);
+  snprintf(data_salinity_ec_fuvitech_str, sizeof(data_salinity_ec_fuvitech_str), "%.2f", data_salinity_ec_fuvitech);
+  snprintf(data_temperature_ec_fuvitech_str, sizeof(data_temperature_ec_fuvitech_str), "%.2f", data_temperateure_ec_fuvitech);
+  //   data EC Fuvitech
+  cJSON_AddStringToObject(json, "solEC", data_conductivity_ec_fuvitech_str);
+  cJSON_AddStringToObject(json, "solTDS", data_tds_ec_fuvitech_str);
+  cJSON_AddStringToObject(json, "solRes", data_resistivity_ec_fuvitech_str);
+  cJSON_AddStringToObject(json, "solSal", data_salinity_ec_fuvitech_str);
+  cJSON_AddStringToObject(json, "solT", data_temperature_ec_fuvitech_str);
+#endif
+#if ec_rika500_13
+  if(data_conductivity_ec_fuvitech<1){
+      check_sensor_ec_error++;
+  }
+  else{
+      check_sensor_ec_error=0;
+  }
+  if(check_sensor_ec_error>=3){
+      NVIC_SystemReset();
+  }
+  char data_conductivity_ec_fuvitech_str[16];
+  char data_resistivity_ec_fuvitech_str[16];
+  char data_temperature_ec_fuvitech_str[16];
+  snprintf(data_conductivity_ec_fuvitech_str, sizeof(data_conductivity_ec_fuvitech_str), "%.2f", data_conductivity_ec_fuvitech);
+  snprintf(data_resistivity_ec_fuvitech_str, sizeof(data_resistivity_ec_fuvitech_str), "%.2f", data_resistivity_ec_fuvitech);
+  snprintf(data_temperature_ec_fuvitech_str, sizeof(data_temperature_ec_fuvitech_str), "%.2f", data_temperateure_ec_fuvitech);
+  //   data EC Fuvitech
+  cJSON_AddStringToObject(json, "solEC", data_conductivity_ec_fuvitech_str);
+  cJSON_AddStringToObject(json, "solRes", data_resistivity_ec_fuvitech_str);
+//  cJSON_AddStringToObject(json, "solT", data_temperature_ec_fuvitech_str);
+#endif
+#if do_fuvitech
+  //   data DO Fuvitech
+//  if(data_dissolved_oxygen_fuvitech<1){
+//      check_sensor_do_error++;
+//  }
+//  else{
+//      check_sensor_do_error=0;
+//  }
+//  if(check_sensor_do_error>=3){
+//      NVIC_SystemReset();
+//  }
   char data_dissolved_oxygen_str[16];
   snprintf(data_dissolved_oxygen_str, sizeof(data_dissolved_oxygen_str), "%.2f", data_dissolved_oxygen_fuvitech);
   cJSON_AddStringToObject(json, "solDO", data_dissolved_oxygen_str);
@@ -847,13 +978,13 @@ void check_handle_state(enum GmsModemState status) {
   case Subscribed: {
 #if INTERVAL_PUPLISH_DATA < 60
 	  if (to_send_status_to_server) {
-      read_sensor();
+//      read_sensor();
+		  	process_uart_rx();
       IWDG->KR = 0xAAAA;
       is_updated_status = send_payload_signal_to_server();
-      is_publish_data_lcd = update_data_to_sreen((uint8_t *)array_json);
+//      is_publish_data_lcd = update_data_to_sreen((uint8_t *)array_json);
       is_updated_status= publish_mqtt_motor_status();
-      sprintf(tx5_status_pump,data_status_pump,SERIAL_NUMBER,motor_ph_plus,motor_ph_minus,motor_x);
-      is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
+
       if (is_updated_status) {
         to_send_status_to_server = 0;
         IWDG->KR = 0xAAAA;
@@ -884,6 +1015,11 @@ void check_handle_state(enum GmsModemState status) {
       }
 
 #endif
+	  break;
+  }
+
+  case ControlModeOffline: {
+
 	  break;
   }
 #if INTERVAL_PUPLISH_DATA >= 60

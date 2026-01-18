@@ -27,12 +27,21 @@
 #include "stdbool.h"
 #include "stdio.h"
 #include "stdlib.h"
-
+#include "ph_json_uart5_rx.h"
+#include "cfg_store.h"
+#include "ph_pump_scheduler.h"
+#include "ph_pump_isr.h"
 
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+ph_ctrl_cfg_t g_cfg;
+ph_pump_isr_sm_t ph_sm_isr;
+
+//static ph_dual_sm_t ph_sm;
+volatile uint32_t g_control_mode = 0; // 0=Offline, 1=Online
+
 
 /* USER CODE END PTD */
 
@@ -88,6 +97,75 @@ static void MX_ADC1_Init(void);
 static void MX_UART5_Init(void);
 /* USER CODE BEGIN PFP */
 
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  if (htim->Instance == htim6.Instance)
+  {
+    // ===== (A) GIỮ NGUYÊN phần SIMCOM đếm gửi server =====
+      frequency_1hz++;
+    if (current_status_simcom == Subscribed) {
+      if (frequency_1hz >= INTERVAL_PUPLISH_DATA) {
+//        current_status_simcom = UpdateToServer;
+        to_send_status_to_server = 1;
+        frequency_1hz = 0;
+
+        // NOTE: KHÔNG NÊN printf ở ISR (nếu cần debug thì set flag)
+        // printf("Case error log total :%d\r\n", total_errors);
+      }
+    }
+    // ===== (B) LỊCH BƠM chạy trong ISR mỗi 1s (chỉ Offline) =====
+    ph_pump_isr_tick_1s(&ph_sm_isr, &g_cfg, data_measured_ph_fuvitech,
+                        &htim2, &motor_ph_plus, &motor_ph_minus);
+
+    // NOTE: dòng này thường KHÔNG cần gọi trong callback (timer tự chạy)
+    // HAL_TIM_Base_Start_IT(&htim6);
+  }
+}
+void process_uart_rx(void)
+{
+    if(!g_rx_flag) return;
+    g_rx_flag = 0;
+
+    // trim CRLF
+    for (int i = (int)strlen(g_rx_line) - 1; i >= 0; i--) {
+        if (g_rx_line[i] == '\r' || g_rx_line[i] == '\n') g_rx_line[i] = '\0';
+        else break;
+    }
+
+    // 1) mode-only
+    uint32_t mode;
+    if (parse_mode_json(g_rx_line, &mode))
+    {
+        mode = mode ? 1U : 0U;
+        if (g_cfg.control_mode != mode) {
+            g_cfg.control_mode = mode;
+            cfg_print(&g_cfg, "MODE UPDATE");
+            cfg_save_to_flash();
+      		g_control_mode=g_cfg.control_mode;
+        }
+
+        // reset lịch bơm trong ISR
+        ph_pump_isr_request_reset();
+        return;
+    }
+
+    // 2) config 5 field (giữ control_mode)
+    ph_ctrl_cfg_t cfg_tmp = g_cfg;
+    if (parse_control_json(g_rx_line, &cfg_tmp))
+    {
+        g_cfg = cfg_tmp;
+        cfg_print(&g_cfg, "CFG UPDATE");
+        cfg_save_to_flash();
+
+        // reset lịch bơm trong ISR để áp dụng config mới
+        ph_pump_isr_request_reset();
+        return;
+    }
+
+    printf("JSON invalid\r\n");
+}
+
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -138,14 +216,30 @@ int main(void)
   MX_ADC1_Init();
   MX_UART5_Init();
   /* USER CODE BEGIN 2 */
+  HAL_Delay(500);
+  printf("Hello Hbee \r\n");
   HAL_UARTEx_ReceiveToIdle_IT(&huart1, (uint8_t *)rx_buffer, 700);
   HAL_UARTEx_ReceiveToIdle_IT(&huart2, (uint8_t *)rx_buffer_fuvitech, 100);
-  //HAL_UARTEx_ReceiveToIdle_IT(&huart4, (uint8_t *)rx_buffer_ph, 20);
+  uart5_rx_start_to_idle();
+//  ph_json_uart5_rx_init(&huart5);
+
   HAL_TIM_Base_Start_IT(&htim6);
   HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&adc_pin_valve, 1);
   HAL_GPIO_WritePin(GPIOA, ENABLE_SENSOR_Pin, GPIO_PIN_SET);
+  HAL_Delay(500);
   sprintf(tx5_status_pump,data_status_pump,SERIAL_NUMBER,motor_ph_plus,motor_ph_minus,motor_x);
   is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
+  cfg_load_from_flash();
+  read_sensor();
+  create_JSON_LCD();
+  HAL_Delay(200);
+  is_publish_data_lcd = update_data_to_sreen((uint8_t *)array_json);
+  sprintf(tx5_status_pump,data_status_pump,SERIAL_NUMBER,motor_ph_plus,motor_ph_minus,motor_x);
+  HAL_Delay(700);
+  is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
+  ph_pump_isr_init(&ph_sm_isr);
+
+//  control_mode=ONLINE;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -154,7 +248,20 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    check_handle_state(current_status_simcom);
+	  	check_handle_state(current_status_simcom);
+	  	if(frequency_1hz>5){
+	  		IWDG->KR = 0xAAAA;
+		  	process_uart_rx();
+		  	read_sensor();
+		  	create_JSON_LCD();
+		    HAL_Delay(200);
+		    is_publish_data_lcd = update_data_to_sreen((uint8_t *)array_json);
+		    sprintf(tx5_status_pump,data_status_pump,SERIAL_NUMBER,motor_ph_plus,motor_ph_minus,motor_x);
+		    HAL_Delay(700);
+		    is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
+		    frequency_1hz=0;
+	  	}
+	  	process_uart_rx();
   }
   /* USER CODE END 3 */
 }
@@ -301,7 +408,7 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 2000;
+  htim2.Init.Prescaler = 7100;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 100;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;

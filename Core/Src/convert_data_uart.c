@@ -15,15 +15,34 @@
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart4;
+extern UART_HandleTypeDef huart5;
 extern bool is_publish_data_lcd;
 char rx_buffer_ec[20];
 char rx_buffer_ph[20];
 char rx_buffer_do[100];
 char rx_buffer_fuvitech[100];
-char data_status_pump[50]="{\"deviceID\":\"%s\",\"1\":%d,\"2\":%d,\"3\":%d}";
+char data_status_pump[50]="{\"deviceID\":\"%s\",\"1\":%d,\"2\":%d,\"3\":%d}\r\n";
 char tx5_status_pump[50];
+int temp_cycle=duty_cycles_ph;
 
 uint8_t payLoadPin;
+
+
+ uint8_t  rx_idle_buf[RX_IDLE_BUF_SZ];
+
+ volatile uint16_t g_rx_len  = 0;
+ volatile uint8_t  g_rx_flag = 0;      // cờ báo có dữ liệu mới
+ char g_rx_line[RX_LINE_MAX];          // chuỗi nhận được (null-terminated)
+
+void uart5_rx_start_to_idle(void)
+{
+    HAL_UARTEx_ReceiveToIdle_IT(&huart5, rx_idle_buf, RX_IDLE_BUF_SZ);
+
+    // hay dùng để bỏ half-transfer (nếu RX dùng DMA)
+    if (huart5.hdmarx) {
+        __HAL_DMA_DISABLE_IT(huart5.hdmarx, DMA_IT_HT);
+    }
+}
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
   if (huart->Instance == USART1) {
@@ -53,8 +72,12 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
         printf("-----------ON RELAY %d -----------\r\n", payLoadPin);
         if(payLoadPin==1)
         {
+        	temp_cycle=temp_cycle+10;
+        	if(temp_cycle>100){
+        		temp_cycle=100;
+        	}
 			 HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_4);
-			__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3, duty_cycles_ph);
+			__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4, duty_cycles_ph);
 			motor_ph_plus=1;
         }
         if(payLoadPin==2)
@@ -66,7 +89,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
         if(payLoadPin==3)
         {
         	 HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
-        	__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3, duty_cycles_x);
+        	__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1, duty_cycles_x);
         	motor_x=1;
         }
         sprintf(tx5_status_pump,data_status_pump,SERIAL_NUMBER,motor_ph_plus,motor_ph_minus,motor_x);
@@ -108,10 +131,24 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
       current_status_simcom = On;
     }
   }
-  if (huart->Instance == USART2) {
+  else if (huart->Instance == UART5)
+  {
+      // ===== THÊM MỚI CHO UART5 (ESP32 -> STM32) =====
+	  printf("-----------UART IT 5 -----------\r\n");
+      if (Size >= RX_LINE_MAX) Size = RX_LINE_MAX - 1;
+
+      memcpy(g_rx_line, rx_idle_buf, Size);
+      g_rx_line[Size] = '\0';
+
+      g_rx_len  = Size;
+      g_rx_flag = 1;
+
+      uart5_rx_start_to_idle(); // re-arm
+  }
+  else if (huart->Instance == USART2) {
         HAL_UARTEx_ReceiveToIdle_IT(&huart2, (uint8_t *)rx_buffer_fuvitech,100);
   }
-  if (huart->Instance == UART4) {
+  else if (huart->Instance == UART4) {
     // sensor PH
     HAL_UARTEx_ReceiveToIdle_IT(&huart4, (uint8_t *)rx_buffer_ph, 20);
   }
