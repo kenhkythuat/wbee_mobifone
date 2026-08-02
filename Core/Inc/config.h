@@ -27,32 +27,33 @@
 
 // Serial number. Must be lower case.
 #ifndef SERIAL_NUMBER
-  #define SERIAL_NUMBER "hb000020"
+  #define SERIAL_NUMBER "hb000999"
 #endif
 
 #define true 1
 #define false 0
 
-#define ph_fuvitech true
+#define ph_fuvitech false
 #define ec_fuvitech false
-#define do_fuvitech true
+#define do_fuvitech false
 
-#define ph_rika500_12 false
-#define ec_rika500_13 false
+#define ph_rika500_12 true
+#define ec_rika500_13 true
+#define do_rika500_04 true
 
-#define duty_cycles_ph 18
-#define duty_cycles_ec 15
+#define duty_cycles_ph 50
+#define duty_cycles_ec 50
 #define duty_cycles_x 50
 
 
 
-//#define FARM "demox"
-//#define MQTT_USER "node" 		// User - connect to MQTT broker
-//#define MQTT_PASS "654321"		// Password - connect to MQTT broker
+#define FARM "demox"
+#define MQTT_USER "node" 		// User - connect to MQTT broker
+#define MQTT_PASS "654321"		// Password - connect to MQTT broker
 
-#define FARM "gateway-agriconnect"
-#define MQTT_USER "mqttnode"       // User - connect to MQTT broker
-#define MQTT_PASS "congamo"		// Password - connect to MQTT broker
+//#define FARM "gateway-agriconnect"
+//#define MQTT_USER "mqttnode"       // User - connect to MQTT broker
+//#define MQTT_PASS "congamo"		// Password - connect to MQTT broker
 
 #define MQTT_TOPIC_ACTUATOR_STATUS FARM "/sn/" SERIAL_NUMBER
 #define MQTT_TOPIC_MOTOR_STATUS FARM "/sn/" SERIAL_NUMBER "/as/"

@@ -251,7 +251,7 @@ int main(void)
 	  	check_handle_state(current_status_simcom);
 	  	if(frequency_1hz>5){
 	  		IWDG->KR = 0xAAAA;
-		  	process_uart_rx();
+		  	//process_uart_rx();
 		  	read_sensor();
 		  	create_JSON_LCD();
 		    HAL_Delay(200);
@@ -261,7 +261,7 @@ int main(void)
 		    is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
 		    frequency_1hz=0;
 	  	}
-	  	process_uart_rx();
+	  	//process_uart_rx();
   }
   /* USER CODE END 3 */
 }

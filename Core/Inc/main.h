@@ -111,6 +111,10 @@ extern float data_tds_ec_fuvitech;
 extern float data_salinity_ec_fuvitech;
 extern float data_dissolved_oxygen_fuvitech;
 
+extern float data_dissolved_oxygen_rika;
+extern float data_temperature_do_rika;
+
+
 extern bool is_pb_done;
 extern volatile uint8_t motor_ph_plus;
 extern volatile uint8_t motor_ph_minus;

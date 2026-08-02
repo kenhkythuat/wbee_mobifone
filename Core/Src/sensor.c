@@ -41,11 +41,18 @@ float data_ph_rika500_12;
 float data_measured_rika500_12;
 float data_temperature_rika500_12;
 
+
 // data EC Fuvitech
 float data_common_sensor_fuvitech;
 float data_conductivity_ec_rika500_13;
 float data_resistivity_ec_rika500_13;
 float data_temperateure_ec_rika500_13;
+float data_tds_ec_rika500_13;
+float data_salinity_ec_rika500_13;
+
+float data_do_saturation;
+float data_dissolved_oxygen_rika;
+float data_temperature_do_rika;
 
 
 float ieee754_to_float(unsigned char *bytes) {
@@ -100,6 +107,13 @@ unsigned char temperature_command_ph_rika500_12[8] = {0x05, 0x03, 0x00, 0x04, 0x
 unsigned char conductivity_command_ec_rika500_13[8] = {0x04, 0x03, 0x00, 0x00, 0x00, 0x02, 0xC4, 0x5E};
 unsigned char resistivity_command_ec_rika500_13[8] = {0x04, 0x03, 0x00, 0x02, 0x00, 0x02, 0x65, 0x9E};
 unsigned char temperateure_command_ec_rika500_13[8] = {0x04, 0x03, 0x00, 0x04, 0x00, 0x02, 0x85, 0x9F};
+unsigned char tds_command_ec_rika500_13[8] = {0x04, 0x03, 0x00, 0x06, 0x00, 0x02, 0x24, 0x5F};
+unsigned char salinity_command_ec_rika500_13[8] = {0x04, 0x03, 0x00, 0x08, 0x00, 0x02, 0x45, 0x9C};
+#endif
+
+#if do_rika500_04
+unsigned char measured_command_do_rika500_04[8] = {0x0A, 0x03, 0x00, 0x00, 0x00, 0x06, 0xC4, 0xB3};
+unsigned char temperateure_command_do_rika500_04[8] = {0x0A, 0x03, 0x00, 0x00, 0x00, 0x06, 0xC4, 0xB3};
 #endif
 
 float read_ph_fuvitech(uint8_t *data, char * data_log) {
@@ -165,6 +179,14 @@ float read_sensor_fuvitech(uint8_t *data, char * data_log) {
 	  }
   }
 #endif
+#if do_rika500_04
+  if(rx_buffer_fuvitech[0]==10&&rx_buffer_fuvitech[1]==3&&rx_buffer_fuvitech[2]==12){
+	  uint8_t reordered_data[4] = {rx_buffer_fuvitech[3], rx_buffer_fuvitech[4], rx_buffer_fuvitech[5], rx_buffer_fuvitech[6]};
+	  uint8_t saturation_data[4] = {rx_buffer_fuvitech[7], rx_buffer_fuvitech[8], rx_buffer_fuvitech[9], rx_buffer_fuvitech[10]};
+	  data_do_saturation= (ieee754_to_float(saturation_data));
+	  data_common_sensor_fuvitech = (ieee754_to_float(reordered_data));
+  }
+#endif
 
   return data_common_sensor_fuvitech;
 }
@@ -199,9 +221,11 @@ void read_sensor(void) {
 #endif
 
 #if ec_rika500_13
-  data_conductivity_ec_fuvitech = (read_sensor_fuvitech(conductivity_command_ec_rika500_13,"EC")) * 1000;
-  data_resistivity_ec_fuvitech = read_sensor_fuvitech(resistivity_command_ec_rika500_13,"EC");
-  data_temperateure_ec_fuvitech = read_sensor_fuvitech(temperateure_command_ec_rika500_13,"EC");
+  data_conductivity_ec_fuvitech = (read_sensor_fuvitech(conductivity_command_ec_rika500_13,"EC conductivity")) * 1000;
+  data_resistivity_ec_fuvitech = read_sensor_fuvitech(resistivity_command_ec_rika500_13,"EC resistivity");
+  data_temperateure_ec_fuvitech = read_sensor_fuvitech(temperateure_command_ec_rika500_13,"EC temperature");
+//  data_tds_ec_fuvitech = read_sensor_fuvitech(tds_command_ec_rika500_13,"EC TDS");
+  data_salinity_ec_fuvitech = (read_sensor_fuvitech(salinity_command_ec_rika500_13,"EC salinity")/640);
 
 #endif
 #if do_fuvitech
@@ -211,6 +235,9 @@ void read_sensor(void) {
 	  HAL_Delay(500);
   }
   data_dissolved_oxygen_fuvitech = read_sensor_fuvitech(_command_do_fuvitech,"DO")/100;
+#endif
+#if do_rika500_04
+  data_dissolved_oxygen_rika = read_sensor_fuvitech(measured_command_do_rika500_04,"Do Rika");
 #endif
 	}
 }

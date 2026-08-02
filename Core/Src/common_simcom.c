@@ -456,6 +456,8 @@ void create_JSON(void) {
   cJSON_AddStringToObject(json, "solPH", data_measured_ph_fuvitech_str);
   cJSON_AddStringToObject(json, "solT", data_temperature_ph_fuvitech_str);
 #endif
+
+
 #if ph_rika500_12
   // data PH Fuvitech
   if(data_measured_ph_fuvitech<1){
@@ -515,12 +517,18 @@ void create_JSON(void) {
   char data_conductivity_ec_fuvitech_str[16];
   char data_resistivity_ec_fuvitech_str[16];
   char data_temperature_ec_fuvitech_str[16];
+  char data_tds_ec_fuvitech_str[16];
+  char data_salinity_ec_fuvitech_str[16];
   snprintf(data_conductivity_ec_fuvitech_str, sizeof(data_conductivity_ec_fuvitech_str), "%.2f", data_conductivity_ec_fuvitech);
   snprintf(data_resistivity_ec_fuvitech_str, sizeof(data_resistivity_ec_fuvitech_str), "%.2f", data_resistivity_ec_fuvitech);
   snprintf(data_temperature_ec_fuvitech_str, sizeof(data_temperature_ec_fuvitech_str), "%.2f", data_temperateure_ec_fuvitech);
+  snprintf(data_tds_ec_fuvitech_str, sizeof(data_tds_ec_fuvitech_str), "%.2f", data_tds_ec_fuvitech);
+  snprintf(data_salinity_ec_fuvitech_str, sizeof(data_salinity_ec_fuvitech_str), "%.2f", data_salinity_ec_fuvitech);
   //   data EC Fuvitech
   cJSON_AddStringToObject(json, "solEC", data_conductivity_ec_fuvitech_str);
   cJSON_AddStringToObject(json, "solRes", data_resistivity_ec_fuvitech_str);
+  cJSON_AddStringToObject(json, "solTDS", data_tds_ec_fuvitech_str);
+  cJSON_AddStringToObject(json, "solSal", data_salinity_ec_fuvitech_str);
 //  cJSON_AddStringToObject(json, "solT", data_temperature_ec_fuvitech_str);
 #endif
 #if do_fuvitech
@@ -538,6 +546,14 @@ void create_JSON(void) {
   snprintf(data_dissolved_oxygen_str, sizeof(data_dissolved_oxygen_str), "%.2f", data_dissolved_oxygen_fuvitech);
   cJSON_AddStringToObject(json, "solDO", data_dissolved_oxygen_str);
 #endif
+
+#if do_rika500_04
+
+  char data_dissolved_oxygen_str[16];
+  snprintf(data_dissolved_oxygen_str, sizeof(data_dissolved_oxygen_str), "%.2f", data_dissolved_oxygen_rika);
+  cJSON_AddStringToObject(json, "solDO", data_dissolved_oxygen_str);
+#endif
+
   char *json_string = cJSON_PrintUnformatted(json);
   if (json_string == NULL) {
     printf("New create error JSON\n");
@@ -576,6 +592,7 @@ void create_JSON_LCD(void) {
   cJSON_AddStringToObject(json, "solPH", data_measured_ph_fuvitech_str);
   cJSON_AddStringToObject(json, "solT", data_temperature_ph_fuvitech_str);
 #endif
+
 #if ph_rika500_12
   // data PH Fuvitech
   if(data_measured_ph_fuvitech<1){
@@ -595,6 +612,7 @@ void create_JSON_LCD(void) {
   cJSON_AddStringToObject(json, "solPH", data_measured_ph_fuvitech_str);
   cJSON_AddStringToObject(json, "solT", data_temperature_ph_fuvitech_str);
 #endif
+
 #if ec_fuvitech
   if(data_conductivity_ec_fuvitech<1){
       check_sensor_ec_error++;
@@ -635,12 +653,18 @@ void create_JSON_LCD(void) {
   char data_conductivity_ec_fuvitech_str[16];
   char data_resistivity_ec_fuvitech_str[16];
   char data_temperature_ec_fuvitech_str[16];
+  char data_tds_ec_fuvitech_str[16];
+  char data_salinity_ec_fuvitech_str[16];
   snprintf(data_conductivity_ec_fuvitech_str, sizeof(data_conductivity_ec_fuvitech_str), "%.2f", data_conductivity_ec_fuvitech);
   snprintf(data_resistivity_ec_fuvitech_str, sizeof(data_resistivity_ec_fuvitech_str), "%.2f", data_resistivity_ec_fuvitech);
   snprintf(data_temperature_ec_fuvitech_str, sizeof(data_temperature_ec_fuvitech_str), "%.2f", data_temperateure_ec_fuvitech);
+  snprintf(data_tds_ec_fuvitech_str, sizeof(data_tds_ec_fuvitech_str), "%.2f", data_tds_ec_fuvitech);
+  snprintf(data_salinity_ec_fuvitech_str, sizeof(data_salinity_ec_fuvitech_str), "%.2f", data_salinity_ec_fuvitech);
   //   data EC Fuvitech
   cJSON_AddStringToObject(json, "solEC", data_conductivity_ec_fuvitech_str);
   cJSON_AddStringToObject(json, "solRes", data_resistivity_ec_fuvitech_str);
+  cJSON_AddStringToObject(json, "solTDS", data_tds_ec_fuvitech_str);
+  cJSON_AddStringToObject(json, "solSal", data_salinity_ec_fuvitech_str);
 //  cJSON_AddStringToObject(json, "solT", data_temperature_ec_fuvitech_str);
 #endif
 #if do_fuvitech
@@ -658,6 +682,15 @@ void create_JSON_LCD(void) {
   snprintf(data_dissolved_oxygen_str, sizeof(data_dissolved_oxygen_str), "%.2f", data_dissolved_oxygen_fuvitech);
   cJSON_AddStringToObject(json, "solDO", data_dissolved_oxygen_str);
 #endif
+
+
+#if do_rika500_04
+
+  char data_dissolved_oxygen_str[16];
+  snprintf(data_dissolved_oxygen_str, sizeof(data_dissolved_oxygen_str), "%.2f", data_dissolved_oxygen_rika);
+  cJSON_AddStringToObject(json, "solDO", data_dissolved_oxygen_str);
+#endif
+
   char *json_string = cJSON_PrintUnformatted(json);
   if (json_string == NULL) {
     printf("New create error JSON\n");
@@ -979,7 +1012,7 @@ void check_handle_state(enum GmsModemState status) {
 #if INTERVAL_PUPLISH_DATA < 60
 	  if (to_send_status_to_server) {
 //      read_sensor();
-		  	process_uart_rx();
+		  	//process_uart_rx();
       IWDG->KR = 0xAAAA;
       is_updated_status = send_payload_signal_to_server();
 //      is_publish_data_lcd = update_data_to_sreen((uint8_t *)array_json);
