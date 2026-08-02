@@ -460,15 +460,15 @@ void create_JSON(void) {
 
 #if ph_rika500_12
   // data PH Fuvitech
-  if(data_measured_ph_fuvitech<1){
-      check_sensor_ph_error++;
-  }
-  else{
-      check_sensor_ph_error=0;
-  }
-  if(check_sensor_ph_error>=3){
-      NVIC_SystemReset();
-  }
+//  if(data_measured_ph_fuvitech<1){
+//      check_sensor_ph_error++;
+//  }
+//  else{
+//      check_sensor_ph_error=0;
+//  }
+//  if(check_sensor_ph_error>=3){
+//      NVIC_SystemReset();
+//  }
 
   char data_measured_ph_fuvitech_str[16];
   char data_temperature_ph_fuvitech_str[16];
@@ -505,15 +505,15 @@ void create_JSON(void) {
   cJSON_AddStringToObject(json, "solT", data_temperature_ec_fuvitech_str);
 #endif
 #if ec_rika500_13
-  if(data_conductivity_ec_fuvitech<1){
-      check_sensor_ec_error++;
-  }
-  else{
-      check_sensor_ec_error=0;
-  }
-  if(check_sensor_ec_error>=3){
-      NVIC_SystemReset();
-  }
+//  if(data_conductivity_ec_fuvitech<1){
+//      check_sensor_ec_error++;
+//  }
+//  else{
+//      check_sensor_ec_error=0;
+//  }
+//  if(check_sensor_ec_error>=3){
+//      NVIC_SystemReset();
+//  }
   char data_conductivity_ec_fuvitech_str[16];
   char data_resistivity_ec_fuvitech_str[16];
   char data_temperature_ec_fuvitech_str[16];
@@ -595,15 +595,15 @@ void create_JSON_LCD(void) {
 
 #if ph_rika500_12
   // data PH Fuvitech
-  if(data_measured_ph_fuvitech<1){
-      check_sensor_ph_error++;
-  }
-  else{
-      check_sensor_ph_error=0;
-  }
-  if(check_sensor_ph_error>=3){
-      NVIC_SystemReset();
-  }
+//  if(data_measured_ph_fuvitech<1){
+//      check_sensor_ph_error++;
+//  }
+//  else{
+//      check_sensor_ph_error=0;
+//  }
+//  if(check_sensor_ph_error>=3){
+//      NVIC_SystemReset();
+//  }
 
   char data_measured_ph_fuvitech_str[16];
   char data_temperature_ph_fuvitech_str[16];
@@ -641,15 +641,15 @@ void create_JSON_LCD(void) {
   cJSON_AddStringToObject(json, "solT", data_temperature_ec_fuvitech_str);
 #endif
 #if ec_rika500_13
-  if(data_conductivity_ec_fuvitech<1){
-      check_sensor_ec_error++;
-  }
-  else{
-      check_sensor_ec_error=0;
-  }
-  if(check_sensor_ec_error>=3){
-      NVIC_SystemReset();
-  }
+//  if(data_conductivity_ec_fuvitech<1){
+//      check_sensor_ec_error++;
+//  }
+//  else{
+//      check_sensor_ec_error=0;
+//  }
+//  if(check_sensor_ec_error>=3){
+//      NVIC_SystemReset();
+//  }
   char data_conductivity_ec_fuvitech_str[16];
   char data_resistivity_ec_fuvitech_str[16];
   char data_temperature_ec_fuvitech_str[16];

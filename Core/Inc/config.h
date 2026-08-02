@@ -27,7 +27,7 @@
 
 // Serial number. Must be lower case.
 #ifndef SERIAL_NUMBER
-  #define SERIAL_NUMBER "hb000999"
+  #define SERIAL_NUMBER "hb000034"
 #endif
 
 #define true 1
@@ -47,13 +47,13 @@
 
 
 
-#define FARM "demox"
-#define MQTT_USER "node" 		// User - connect to MQTT broker
-#define MQTT_PASS "654321"		// Password - connect to MQTT broker
+//#define FARM "demox"
+//#define MQTT_USER "node" 		// User - connect to MQTT broker
+//#define MQTT_PASS "654321"		// Password - connect to MQTT broker
 
-//#define FARM "gateway-agriconnect"
-//#define MQTT_USER "mqttnode"       // User - connect to MQTT broker
-//#define MQTT_PASS "congamo"		// Password - connect to MQTT broker
+#define FARM "container-rauqua-ahrd"
+#define MQTT_USER "mqttnode"       // User - connect to MQTT broker
+#define MQTT_PASS "congamo"		// Password - connect to MQTT broker
 
 #define MQTT_TOPIC_ACTUATOR_STATUS FARM "/sn/" SERIAL_NUMBER
 #define MQTT_TOPIC_MOTOR_STATUS FARM "/sn/" SERIAL_NUMBER "/as/"
