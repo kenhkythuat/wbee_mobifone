@@ -43,6 +43,13 @@ extern "C" {
 #define OFFLINE      0
 #define ONLINE      1
 
+/*
+ * 0: disable automatic pH pump schedule from g_control_mode/config.
+ *    Pumps are controlled only by MQTT command received on UART1.
+ * 1: enable the old automatic schedule again.
+ */
+#define PH_PUMP_SCHEDULE_ENABLE 0
+
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/

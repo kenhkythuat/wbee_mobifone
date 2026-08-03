@@ -112,7 +112,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
       }
     }
     // ===== (B) LỊCH BƠM chạy trong ISR mỗi 1s (chỉ Offline) =====
+#if PH_PUMP_SCHEDULE_ENABLE
     ph_pump_isr_tick_1s(&ph_sm_isr, &g_cfg, data_measured_ph_fuvitech, &htim2, &motor_ph_plus, &motor_ph_minus);
+#endif
 
     // NOTE: dòng này thường KHÔNG cần gọi trong callback (timer tự chạy)
     // HAL_TIM_Base_Start_IT(&htim6);
