@@ -12,6 +12,7 @@
 #include "stdlib.h"
 #include "string.h"
 #include <math.h>
+#include "plc_rs485.h"
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart4;
@@ -146,6 +147,9 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
       uart5_rx_start_to_idle(); // re-arm
   }
   else if (huart->Instance == USART2) {
+#if SENSOR_DATA_SOURCE == SENSOR_SOURCE_PLC_RS485
+        plc_rs485_on_uart_rx((uint8_t *)rx_buffer_fuvitech, Size);
+#endif
         HAL_UARTEx_ReceiveToIdle_IT(&huart2, (uint8_t *)rx_buffer_fuvitech,100);
   }
   else if (huart->Instance == UART4) {

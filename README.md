@@ -84,7 +84,7 @@ Ví dụ dùng A7670C:
 Serial phải viết thường:
 
 ```c
-#define SERIAL_NUMBER "hb000999"
+#define SERIAL_NUMBER "wb000001"
 ```
 
 Serial này được dùng để tạo MQTT client ID và topic.
@@ -92,7 +92,7 @@ Serial này được dùng để tạo MQTT client ID và topic.
 ### 4.4. Chu kỳ publish dữ liệu
 
 ```c
-#define INTERVAL_PUPLISH_DATA 10
+#define INTERVAL_PUPLISH_DATA 15
 ```
 
 Đơn vị: giây.
@@ -126,10 +126,11 @@ Giá trị là phần trăm PWM, thường trong khoảng `0..100`.
 ### 4.7. MQTT broker và topic
 
 ```c
-#define FARM "gateway-agriconnect"
+#define FARM "mobi/water"
 #define MQTT_USER "<mqtt_user>"
 #define MQTT_PASS "<mqtt_password>"
-#define MQTT_HOST "tcp://mqtt.agriconnect.vn"
+#define MQTT_BROKER_HOST "42.1.65.138"
+#define MQTT_HOST "tcp://" MQTT_BROKER_HOST
 #define MQTT_PORT 1883
 ```
 
@@ -138,16 +139,21 @@ Giá trị là phần trăm PWM, thường trong khoảng `0..100`.
 Topic được tạo tự động từ `FARM` và `SERIAL_NUMBER`:
 
 ```c
-#define MQTT_TOPIC_ACTUATOR_STATUS FARM "/sn/" SERIAL_NUMBER
-#define MQTT_TOPIC_MOTOR_STATUS FARM "/sn/" SERIAL_NUMBER "/as/"
-#define MQTT_TOPIC_ACTUATOR_CONTROL FARM "/snac/" SERIAL_NUMBER "/"
+#define MQTT_TOPIC_TELEMETRY FARM "/" SERIAL_NUMBER "/telemetry"
+#define MQTT_TOPIC_STATUS FARM "/" SERIAL_NUMBER "/status"
+#define MQTT_TOPIC_CONFIG_SET FARM "/" SERIAL_NUMBER "/config/set"
+#define MQTT_TOPIC_CONFIG_GET FARM "/" SERIAL_NUMBER "/config/get"
+#define MQTT_TOPIC_CONFIG_STATE FARM "/" SERIAL_NUMBER "/config/state"
+#define MQTT_TOPIC_CONFIG_RESPONSE FARM "/" SERIAL_NUMBER "/config/response"
+#define MQTT_TOPIC_COMMAND_REQUEST FARM "/" SERIAL_NUMBER "/command/request"
+#define MQTT_TOPIC_COMMAND_RESPONSE FARM "/" SERIAL_NUMBER "/command/response"
 ```
 
-Ví dụ với `SERIAL_NUMBER = "hb000999"`:
+Ví dụ với `SERIAL_NUMBER = "wb000001"`:
 
-- Publish dữ liệu: `gateway-agriconnect/sn/hb000999`
-- Publish trạng thái motor: `gateway-agriconnect/sn/hb000999/as/`
-- Subscribe lệnh điều khiển: `gateway-agriconnect/snac/hb000999/#`
+- Publish telemetry: `mobi/water/wb000001/telemetry`
+- Publish status: `mobi/water/wb000001/status`
+- Subscribe config/command: `mobi/water/wb000001/config/set`, `mobi/water/wb000001/config/get`, `mobi/water/wb000001/command/request`
 
 ## 5. Chế độ điều khiển bơm
 
@@ -243,13 +249,17 @@ Luồng MQTT chính:
 Firmware subscribe topic:
 
 ```text
-<FARM>/snac/<SERIAL_NUMBER>/#
+<FARM>/<SERIAL_NUMBER>/config/set
+<FARM>/<SERIAL_NUMBER>/config/get
+<FARM>/<SERIAL_NUMBER>/command/request
 ```
 
 Với cấu hình mặc định:
 
 ```text
-gateway-agriconnect/snac/hb000999/#
+mobi/water/wb000001/config/set
+mobi/water/wb000001/config/get
+mobi/water/wb000001/command/request
 ```
 
 Payload/topic được xử lý trong `Core/Src/convert_data_uart.c`. Các motor đang được map:

@@ -14,6 +14,7 @@
 #include <stdbool.h>
 #include "ph_pump_scheduler.h"
 #include "ph_pump_isr.h"
+#include "mobi_mqtt.h"
 
 /* Private variables ---------------------------------------------------------*/
 extern UART_HandleTypeDef huart1;
@@ -268,164 +269,33 @@ bool check_signal_simcom(void) {
 }
 
 bool enable_mqtt_on_gsm_modem(void) {
-  is_enable_mqtt = false;
+  is_enable_mqtt = mobi_mqtt_start();
 #if SIMCOM_MODEL == a7080
-  send_to_simcom_a76xx("AT+CNACT=0,1\r\n");
-  HAL_Delay(400);
-  send_to_simcom_a76xx("AT+CNACT?\r\n");
-  HAL_Delay(400);
-  send_to_simcom_a76xx("AT+SMCONF=\"URL\",\"mqtt.agriconnect.vn\",1883\r\n");
-  HAL_Delay(400);
-  send_to_simcom_a76xx("AT+SMCONF=\"KEEPTIME\",600\r\n");
-  HAL_Delay(400);
-  sprintf(array_at_command, "AT+SMCONF=\"CLIENTID\",\"%s\"\r\n", MQTT_CLIENT_ID);
-  send_to_simcom_a76xx(array_at_command);
-  HAL_Delay(400);
-  sprintf(array_at_command, "AT+SMCONF=\"USERNAME\",\"%s\"\r\n", MQTT_USER);
-  send_to_simcom_a76xx(array_at_command);
-  HAL_Delay(400);
-  sprintf(array_at_command, "AT+SMCONF=\"PASSWORD\",\"%s\"\r\n", MQTT_PASS);
-  send_to_simcom_a76xx(array_at_command);
-  HAL_Delay(400);
-  send_to_simcom_a76xx("AT+SMCONF=\"CLEANSS\",1\r\n");
-  HAL_Delay(400);
-  send_to_simcom_a76xx("AT+SMCONF?\r\n");
-  HAL_Delay(400);
-  memset(rx_data_sim, '\0', 1500);
-  HAL_Delay(400);
-  send_to_simcom_a76xx("AT+SMCONN\r\n");
-  HAL_Delay(9000);
-  if ((strstr((char *)rx_data_sim, "OK") != NULL)) {
-    printf("----------Service have started SIMCOM 7080G "
-           "successfully------------\n");
-    is_connected_mqtt = 1;
-    return true;
-  }
-#else
-  memset(rx_data_sim, '\0', 700);
-  send_to_simcom_a76xx("AT+CMQTTSTART\r\n");
-  HAL_Delay(3000);
-  if ((strstr((char *)rx_data_sim, "+CMQTTSTART: 0") != NULL)||(strstr((char *)rx_data_sim, "OK")!= NULL)) {
-    printf("----------Service have started successfully------------\n");
-    return true;
-  } else {
-    printf("----------------- Start MQTT service fail------------------\n");
-    return false;
-  }
+  is_connected_mqtt = is_enable_mqtt;
 #endif
-  return false;
+  return is_enable_mqtt;
 }
 
 bool acquire_gsm_mqtt_client(void) {
-  is_acquiered_mqtt = false;
-  memset(rx_data_sim, '\0', 700);
-  printf("-----------------Acquire_gsm_mqtt_client------------------\n");
-  sprintf(array_at_command, "+CMQTTACCQ: 0,\"%s\",0\r\n", MQTT_CLIENT_ID);
-  send_to_simcom_a76xx("AT+CMQTTACCQ?\r\n");
-  HAL_Delay(400);
-  if (strstr((char *)rx_data_sim, array_at_command) != NULL) {
-    printf("-----------------Had acquired------------------\n");
-    return true;
-  } else {
-    printf("-----------------Haven't got acquire yet------------------\n");
-    is_at_acquier_mqtt = false;
-  }
-  if (is_at_acquier_mqtt == false) {
-    sprintf(array_at_command, "AT+CMQTTACCQ=0,\"%s\",0\r\n", MQTT_CLIENT_ID);
-    send_to_simcom_a76xx(array_at_command);
-    HAL_Delay(300);
-    //sprintf(array_at_command, "+CMQTTACCQ: 0,\"%s\",0", MQTT_CLIENT_ID);
-    HAL_Delay(300);
-    if (strstr((char *)rx_data_sim, "OK") != NULL) {
-      printf("-----------------Acquire Successfully------------------\n");
-      is_at_acquier_mqtt = true;
-      return true;
-    } else {
-      printf("-----------------Acquire Fail------------------\n");
-    }
-  }
-  return false;
+  is_acquiered_mqtt = mobi_mqtt_acquire_client();
+  return is_acquiered_mqtt;
 }
 
 bool connect_mqtt_server_by_gsm(void) {
-  is_connected_mqtt = false;
-  sprintf(array_at_command, "+CMQTTCONNECT: 0,\"%s:%d\",60,1,\"%s\",\"%s\"\r\n", MQTT_HOST, MQTT_PORT, MQTT_USER, MQTT_PASS);
-  HAL_Delay(200);
-  send_to_simcom_a76xx("AT+CMQTTCONNECT?\r\n");
-  HAL_Delay(200);
-  if (strstr((char *)rx_data_sim, array_at_command) != NULL) {
-    printf("-----------------Connected------------------\n");
-    is_at_connect_mqtt = true;
-    return true;
-  } else {
-    printf("-----------------Not connect yet !------------------\n");
-    is_at_connect_mqtt = false;
-  }
-  if (is_at_connect_mqtt == false) {
-	memset(rx_data_sim, '\0', 700);
-    sprintf(array_at_command, "AT+CMQTTCONNECT=0,\"%s:%d\",60,1,\"%s\",\"%s\"\r\n", MQTT_HOST, MQTT_PORT, MQTT_USER, MQTT_PASS);
-    send_to_simcom_a76xx(array_at_command);
-    HAL_Delay(2000);
-    if (strstr((char *)rx_data_sim, "+CMQTTCONNECT: 0,0") != NULL || strstr((char *)rx_data_sim, "OK") != NULL) {
-      printf("\n-----------------Connected MQTT Success------------------\n");
-      return true;
-    } else {
-      printf("\n-----------------Connect fail------------------\n");
-    }
-  }
-  return false;
+  is_connected_mqtt = mobi_mqtt_connect();
+  return is_connected_mqtt;
 }
 
 bool subscribe_mqtt_via_gsm(void) {
-#if SIMCOM_MODEL == a7080
-  memset(rx_data_sim, '\0', 1500);
-  HAL_Delay(400);
-  char temp_buffer[200];
-  sprintf(temp_buffer, "\"%s/snac/%s/#\"", FARM, SERIAL_NUMBER);
-  sprintf(array_at_command, "AT+SMSUB=%s,0\r\n", temp_buffer);
-  send_to_simcom_a76xx(array_at_command);
-  HAL_Delay(3000);
-  if (strstr((char *)rx_data_sim, "OK") != NULL) {
-    printf("\n-----------------Subscribe Topic Success------------------\n");
-    is_at_subcribe_topic_mqtt = true;
+  is_subcribed_mqtt = mobi_mqtt_subscribe_server_topics();
+  if (is_subcribed_mqtt) {
     HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin, SET);
-    return true;
-  } else {
-    printf("-----------------Subscribe Fail !------------------\n");
-    is_at_subcribe_mqtt = false;
-    return false;
-  }
-#else
-  memset(rx_data_sim, '\0', 700);
-  sprintf(array_at_command, "%s/snac/%s/#", FARM, SERIAL_NUMBER);
-  sprintf(array_at_command, "AT+CMQTTSUBTOPIC=0,%d,1\r\n", (int)strlen(array_at_command));
-  send_to_simcom_a76xx(array_at_command);
-  HAL_Delay(500);
-  sprintf(array_at_command, "%s/snac/%s/#\r\n", FARM, SERIAL_NUMBER);
-  send_to_simcom_a76xx(array_at_command);
-  HAL_Delay(500);
-  if (strstr((char *)rx_data_sim, "OK") != NULL) {
-    printf("-----------------Subscribe Topic Success------------------\n");
-    is_at_subcribe_topic_mqtt = true;
-  } else {
-    printf("-----------------Subscribe Topic Fail------------------\n");
-    is_at_subcribe_topic_mqtt = false;
-  }
-  if (is_at_subcribe_topic_mqtt == true) {
-    send_to_simcom_a76xx("AT+CMQTTSUB=0\r\n");
-    HAL_Delay(1000);
-    if (strstr((char *)rx_data_sim, "+CMQTTSUB: 0,0") != NULL) {
-      printf("-----------------Subscribe Success !------------------\n");
-      is_at_subcribe_mqtt = true;
-    } else {
-      printf("-----------------Subscribe Fail !------------------\n");
-      is_at_subcribe_mqtt = false;
-      return false;
-    }
-  }
-  HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin, SET);
-  return true;
+#if SENSOR_DATA_SOURCE == SENSOR_SOURCE_DIRECT
+    read_sensor();
 #endif
+    mobi_mqtt_after_subscribe_online();
+  }
+  return is_subcribed_mqtt;
 }
 
 void create_JSON(void) {
@@ -722,185 +592,17 @@ void create_Json_status_motor(void)
 	  cJSON_Delete(json);
 }
 bool publish_mqtt_via_gsm(void) {
-  //  is used to input the topic of a publish message
-  create_JSON();
-#if SIMCOM_MODEL == a7080
-  send_to_simcom_a76xx("AT+SMSTATE?\r\n");
-  HAL_Delay(200);
-  if (strstr((char *)rx_data_sim, "+SMSTATE: 1") != NULL) {
-    printf("-----------------Expression MQTT on-line state!------------------\n");
-    //		  return true;
-  } else {
-    printf("-----------------Expression MQTT off-line state @@ "
-           "!------------------\n");
-    return false;
-  }
-  send_to_simcom_a76xx("AT+CGREG?\r\n");
-  HAL_Delay(200);
-  sprintf(array_at_command, "AT+SMPUB=\"%s\",%d,0,0\r\n", MQTT_TOPIC_ACTUATOR_STATUS, strlen(array_json));
-  send_to_simcom_a76xx(array_at_command);
-  HAL_Delay(300);
-  sprintf(array_at_command, "%s\r\n", array_json);
-  send_to_simcom_a76xx(array_at_command);
-  HAL_Delay(1000);
-  if (strstr((char *)rx_data_sim, "OK") != NULL) {
-    printf("-----------------Publish Success to server Agriconnect "
-           "!------------------\n");
-    led_status('G');
-    HAL_Delay(1000);
-    return true;
-  } else
-    printf("-----------------Publish fail !------------------\n");
-#else
-  sprintf(array_at_command, "AT+CMQTTTOPIC=0,%d\r\n", strlen(MQTT_TOPIC_ACTUATOR_STATUS));
-  send_to_simcom_a76xx(array_at_command);
-  HAL_Delay(400);
-  sprintf(array_at_command, "%s\r\n", MQTT_TOPIC_ACTUATOR_STATUS);
-  send_to_simcom_a76xx(array_at_command);
-  HAL_Delay(400);
-  if (strstr((char *)rx_data_sim, "OK") != NULL) {
-    printf("\r\n----- Sent input the topic of a publish message success ! ---------\n");
-    is_at_topic_puplish_mqtt = true;
-  } else {
-    printf("\r\n----------------- Sent input the topic of a publish message fail "
-           "!------------------\n");
-    is_at_topic_puplish_mqtt = false;
-  }
-  if (is_at_topic_puplish_mqtt) {
-    // is used to input the message body of a publish message.
-    int length_array = strlen(array_json);
-    sprintf(array_at_command, "AT+CMQTTPAYLOAD=0,%d\r\n", length_array);
-    send_to_simcom_a76xx(array_at_command);
-    HAL_Delay(400);
-    send_to_simcom_a76xx(array_json);
-    HAL_Delay(600);
-    if (strstr((char *)rx_data_sim, "OK") != NULL) {
-      printf("\r\n----------------- Sent input the message body of a publish "
-             "message ! ------------------\n");
-      is_at_data_puplish_mqtt = true;
-    } else {
-      printf("\r\n--- Sent input the message body of a publish fail! "
-             "--------\n");
-      is_at_data_puplish_mqtt = false;
-    }
-
-    if (is_at_data_puplish_mqtt) {
-      send_to_simcom_a76xx("AT+CMQTTPUB=0,1,60\r\n");
-      HAL_Delay(2000);
-      if (strstr((char *)rx_data_sim, "+CMQTTPUB: 0,0") != NULL) {
-        printf("-----------------Publish Success !------------------\n");
-        is_at_puplish_mqtt = true;
-        return true;
-      } else {
-        printf("-----------------Publish fail !------------------\n");
-        is_at_puplish_mqtt = false;
-      }
-    }
-  }
-#endif
-  return false;
+  is_at_puplish_mqtt = mobi_mqtt_publish_telemetry();
+  return is_at_puplish_mqtt;
 }
 
 bool publish_mqtt_motor_status (void)
 {
-		create_Json_status_motor();
-	  sprintf(array_at_command, "AT+CMQTTTOPIC=0,%d\r\n", strlen(MQTT_TOPIC_MOTOR_STATUS));
-	  send_to_simcom_a76xx(array_at_command);
-	  HAL_Delay(400);
-	  sprintf(array_at_command, "%s\r\n", MQTT_TOPIC_MOTOR_STATUS);
-	  send_to_simcom_a76xx(array_at_command);
-	  HAL_Delay(400);
-	  if (strstr((char *)rx_data_sim, "OK") != NULL) {
-	    printf("\r\n----- Sent input the topic of a publish message success ! ---------\n");
-	    is_at_topic_puplish_mqtt = true;
-	  } else {
-	    printf("\r\n----------------- Sent input the topic of a publish message fail "
-	           "!------------------\n");
-	    is_at_topic_puplish_mqtt = false;
-	  }
-	  if (is_at_topic_puplish_mqtt) {
-	    // is used to input the message body of a publish message.
-	    int length_array = strlen(array_json);
-	    sprintf(array_at_command, "AT+CMQTTPAYLOAD=0,%d\r\n", length_array);
-	    send_to_simcom_a76xx(array_at_command);
-	    HAL_Delay(400);
-	    send_to_simcom_a76xx(array_json);
-	    HAL_Delay(600);
-	    if (strstr((char *)rx_data_sim, "OK") != NULL) {
-	      printf("\r\n----------------- Sent input the message body of a publish "
-	             "message ! ------------------\n");
-	      is_at_data_puplish_mqtt = true;
-	    } else {
-	      printf("\r\n--- Sent input the message body of a publish fail! "
-	             "--------\n");
-	      is_at_data_puplish_mqtt = false;
-	    }
-	    if (is_at_data_puplish_mqtt) {
-	      send_to_simcom_a76xx("AT+CMQTTPUB=0,1,60\r\n");
-	      HAL_Delay(2000);
-	      if (strstr((char *)rx_data_sim, "+CMQTTPUB: 0,0") != NULL) {
-	        printf("-----------------Publish Success !------------------\n");
-	        is_at_puplish_mqtt = true;
-	        return true;
-	      } else {
-	        printf("-----------------Publish fail !------------------\n");
-	        is_at_puplish_mqtt = false;
-	      }
-	    }
-	  }
-	  return false;
+  is_at_puplish_mqtt = mobi_mqtt_publish_config_state();
+  return is_at_puplish_mqtt;
 }
 bool stop_mqtt_via_gsm(void) {
-#if SIMCOM_MODEL == a7080
-  send_to_simcom_a76xx("AT+SMDISC\r\n");
-  if (strstr((char *)rx_data_sim, "OK") != NULL) {
-    printf("-------- Disconnect MQTT successfully------------\n");
-    return true;
-  } else
-    return false;
-#else
-  send_to_simcom_a76xx("AT+CMQTTDISC?\r\n");
-  HAL_Delay(500);
-  if (strstr((char *)rx_data_sim, "+CMQTTDISC: 0,0") != NULL) {
-    printf("----------------- Connection! ------------------\n");
-    is_at_check_dis_mqtt = true;
-  } else {
-    printf("----------------- Disconnect! ------------------\n");
-    is_at_check_dis_mqtt = false;
-    is_at_disconnect_mqtt = true;
-  }
-  if (is_at_check_dis_mqtt) {
-    send_to_simcom_a76xx("AT+CMQTTDISC=0,120\r\n");
-    HAL_Delay(500);
-    if (strstr((char *)rx_data_sim, "+CMQTTDISC: 0,0") != NULL) {
-      printf("----------------- Disconnect successfully! ------------------\n");
-      is_at_disconnect_mqtt = true;
-    } else
-      return false;
-  }
-  if (is_at_disconnect_mqtt) {
-    send_to_simcom_a76xx("AT+CMQTTREL=0\r\n");
-    HAL_Delay(500);
-    if (strstr((char *)rx_data_sim, "OK") != NULL) {
-      printf("--------------- Release a MQTT client successfully! "
-             "-----------------\n");
-      is_at_rel_mqtt = true;
-    } else
-      return false;
-  }
-  if (is_at_rel_mqtt) {
-    send_to_simcom_a76xx("AT+CMQTTSTOP\r\n");
-    HAL_Delay(500);
-    if (strstr((char *)rx_data_sim, "OK") != NULL) {
-      printf("----------------- Stop MQTT service successfully! "
-             "------------------\n");
-      is_at_stop_mqtt = true;
-      return true;
-    } else
-      return false;
-  }
-  return false;
-#endif
+  return mobi_mqtt_disconnect();
 }
 
 bool send_payload_signal_to_server(void) {
@@ -1011,12 +713,14 @@ void check_handle_state(enum GmsModemState status) {
   case Subscribed: {
 #if INTERVAL_PUPLISH_DATA < 60
 	  if (to_send_status_to_server) {
-//      read_sensor();
+#if SENSOR_DATA_SOURCE == SENSOR_SOURCE_DIRECT
+      read_sensor();
+#endif
 		  	//process_uart_rx();
+      printf("Publish telemetry by interval\r\n");
       IWDG->KR = 0xAAAA;
       is_updated_status = send_payload_signal_to_server();
 //      is_publish_data_lcd = update_data_to_sreen((uint8_t *)array_json);
-      is_updated_status= publish_mqtt_motor_status();
 
       if (is_updated_status) {
         to_send_status_to_server = 0;
@@ -1032,7 +736,9 @@ void check_handle_state(enum GmsModemState status) {
   }
 
 #else
+#if SENSOR_DATA_SOURCE == SENSOR_SOURCE_DIRECT
       read_sensor();
+#endif
       is_updated_status = send_payload_signal_to_server();
       if (is_updated_status) {
         to_send_status_to_server = 0;

@@ -25,6 +25,7 @@
 #include "ph_json_uart5_rx.h"
 #include "ph_pump_isr.h"
 #include "ph_pump_scheduler.h"
+#include "plc_rs485.h"
 #include "stdbool.h"
 #include "stdio.h"
 #include "stdlib.h"
@@ -78,6 +79,7 @@ UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+static volatile uint16_t lcd_update_counter_1hz = 0;
 
 /* USER CODE END PV */
 
@@ -101,6 +103,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
   if (htim->Instance == htim6.Instance) {
     // ===== (A) GIỮ NGUYÊN phần SIMCOM đếm gửi server =====
     frequency_1hz++;
+    lcd_update_counter_1hz++;
+    plc_rs485_tick_1s();
     if (current_status_simcom == Subscribed) {
       if (frequency_1hz >= INTERVAL_PUPLISH_DATA) {
         //        current_status_simcom = UpdateToServer;
@@ -225,10 +229,13 @@ int main(void) {
   HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&adc_pin_valve, 1);
   HAL_GPIO_WritePin(GPIOA, ENABLE_SENSOR_Pin, GPIO_PIN_SET);
   HAL_Delay(500);
+  plc_rs485_init();
   sprintf(tx5_status_pump, data_status_pump, SERIAL_NUMBER, motor_ph_plus, motor_ph_minus, motor_x);
   is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
   cfg_load_from_flash();
+#if SENSOR_DATA_SOURCE == SENSOR_SOURCE_DIRECT
   read_sensor();
+#endif
   create_JSON_LCD();
   HAL_Delay(200);
   is_publish_data_lcd = update_data_to_sreen((uint8_t *)array_json);
@@ -247,17 +254,19 @@ int main(void) {
 
     /* USER CODE BEGIN 3 */
     check_handle_state(current_status_simcom);
-    if (frequency_1hz > 5) {
+    if (lcd_update_counter_1hz > 5) {
       IWDG->KR = 0xAAAA;
       // process_uart_rx();
+#if SENSOR_DATA_SOURCE == SENSOR_SOURCE_DIRECT
       read_sensor();
+#endif
       create_JSON_LCD();
       HAL_Delay(200);
       is_publish_data_lcd = update_data_to_sreen((uint8_t *)array_json);
       sprintf(tx5_status_pump, data_status_pump, SERIAL_NUMBER, motor_ph_plus, motor_ph_minus, motor_x);
       HAL_Delay(700);
       is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
-      frequency_1hz = 0;
+      lcd_update_counter_1hz = 0;
     }
     // process_uart_rx();
   }
@@ -611,10 +620,17 @@ static void MX_USART2_UART_Init(void) {
 
   /* USER CODE END USART2_Init 1 */
   huart2.Instance = USART2;
+#if SENSOR_DATA_SOURCE == SENSOR_SOURCE_PLC_RS485
+  huart2.Init.BaudRate = PLC_RS485_BAUDRATE;
+  huart2.Init.WordLength = UART_WORDLENGTH_9B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_EVEN;
+#else
   huart2.Init.BaudRate = 9600;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
   huart2.Init.StopBits = UART_STOPBITS_1;
   huart2.Init.Parity = UART_PARITY_NONE;
+#endif
   huart2.Init.Mode = UART_MODE_TX_RX;
   huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
   huart2.Init.OverSampling = UART_OVERSAMPLING_16;

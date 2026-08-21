@@ -23,11 +23,11 @@
 
 #define SIMCOM_MODEL a7680 // #default is a7670 if you use model other please choose enter your model
 #define SAVE_LOAD false
-#define INTERVAL_PUPLISH_DATA 10 // the time the device sends data to the server, If the sending time is over 60 seconds, the sensor will go into deep sleep.
+#define INTERVAL_PUPLISH_DATA 15 // the time the device sends data to the server, If the sending time is over 60 seconds, the sensor will go into deep sleep.
 
 // Serial number. Must be lower case.
 #ifndef SERIAL_NUMBER
-  #define SERIAL_NUMBER "hb000999"
+  #define SERIAL_NUMBER "wb000001"
 #endif
 
 #define true 1
@@ -37,9 +37,41 @@
 #define ec_fuvitech false
 #define do_fuvitech false
 
-#define ph_rika500_12 true
-#define ec_rika500_13 true
+#define ph_rika500_12 false
+#define ec_rika500_13 false
 #define do_rika500_04 true
+
+#define SENSOR_SOURCE_DIRECT 0
+#define SENSOR_SOURCE_PLC_RS485 1
+#define SENSOR_DATA_SOURCE SENSOR_SOURCE_PLC_RS485
+
+#define PLC_RS485_TIMEOUT_SEC 30
+#define PLC_RS485_MAX_REGISTERS 16
+#define PLC_RS485_MODBUS_ADDRESS 2
+#define PLC_RS485_FUNC_WRITE_MULTIPLE_REGS 0x10
+#define PLC_RS485_BAUDRATE 9600
+#define PLC_REG_UNUSED 0xFFFFU
+
+#define PLC_REG_PH1 0
+#define PLC_REG_PH2 1
+#define PLC_REG_DO 2
+#define PLC_REG_OZONE 3
+#define PLC_REG_PRESSURE 4
+#define PLC_REG_TURBIDITY PLC_REG_UNUSED
+
+#define PLC_REG_X2_STATUS 5
+#define PLC_REG_Y1_STATUS 6
+#define PLC_REG_Y24_STATUS 7
+#define PLC_BIT_X2_FULL_TANK 2
+#define PLC_BIT_Y1_MODULE_ON 1
+#define PLC_BIT_Y24_MODULE_ON 4
+
+#define PLC_SCALE_PH1 10.0f
+#define PLC_SCALE_PH2 10.0f
+#define PLC_SCALE_DO 1.0f
+#define PLC_SCALE_OZONE 1.0f
+#define PLC_SCALE_PRESSURE 1.0f
+#define PLC_SCALE_TURBIDITY 1.0f
 
 #define duty_cycles_ph 50
 #define duty_cycles_ec 50
@@ -51,21 +83,34 @@
 //#define MQTT_USER "node" 		// User - connect to MQTT broker
 //#define MQTT_PASS "654321"		// Password - connect to MQTT broker
 
-#define FARM "gateway-agriconnect"
-#define MQTT_USER "mqttnode"       // User - connect to MQTT broker
-#define MQTT_PASS "congamo"		// Password - connect to MQTT broker
+#define FARM "mobi/water"
+#define MQTT_USER "admin"       // User - connect to MQTT broker
+#define MQTT_PASS "admin123"		// Password - connect to MQTT broker
 
-#define MQTT_TOPIC_ACTUATOR_STATUS FARM "/sn/" SERIAL_NUMBER
-#define MQTT_TOPIC_MOTOR_STATUS FARM "/sn/" SERIAL_NUMBER "/as/"
-// MQTT topic to subscribe and get command to switch on/off actuator
-#define MQTT_TOPIC_ACTUATOR_CONTROL FARM "/snac/" SERIAL_NUMBER "/"
+#define MQTT_TOPIC_TELEMETRY FARM "/" SERIAL_NUMBER "/telemetry"
+#define MQTT_TOPIC_STATUS FARM "/" SERIAL_NUMBER "/status"
+#define MQTT_TOPIC_CONFIG_SET FARM "/" SERIAL_NUMBER "/config/set"
+#define MQTT_TOPIC_CONFIG_GET FARM "/" SERIAL_NUMBER "/config/get"
+#define MQTT_TOPIC_CONFIG_STATE FARM "/" SERIAL_NUMBER "/config/state"
+#define MQTT_TOPIC_CONFIG_RESPONSE FARM "/" SERIAL_NUMBER "/config/response"
+#define MQTT_TOPIC_COMMAND_REQUEST FARM "/" SERIAL_NUMBER "/command/request"
+#define MQTT_TOPIC_COMMAND_RESPONSE FARM "/" SERIAL_NUMBER "/command/response"
 /** MQTT
- * Global broker: mqtt.agriconnect.vn
+ * Mobi water monitoring broker.
  */
-#define MQTT_HOST "tcp://mqtt.agriconnect.vn"           		// MQTT broker
+#define MQTT_BROKER_HOST "42.1.65.167"             // MQTT broker host/IP without scheme
+#define MQTT_HOST "tcp://" MQTT_BROKER_HOST        // MQTT broker URL for CMQTTCONNECT
 
-#define MQTT_CLIENT_ID  SERIAL_NUMBER
+#define MQTT_CLIENT_ID  "mobi-" SERIAL_NUMBER
 #define MQTT_PORT 1883
+#define MQTT_KEEPALIVE_SEC 60
+#define MQTT_QOS 0
+#define MQTT_RETAIN 0
+#define MQTT_CLEAN_SESSION 1
+#define MQTT_STATUS_RETAIN 1
+#define MQTT_CONFIG_STATE_RETAIN 1
+#define TELEMETRY_INTERVAL_DEFAULT_S 15
+#define SENSOR_SAMPLE_INTERVAL_DEFAULT_S 10
 
 #define TIME_PERIOD ((2000000*INTERVAL_PUPLISH_DATA)/60000)-1
 
