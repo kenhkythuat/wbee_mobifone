@@ -91,7 +91,7 @@ enum GmsModemState
 extern enum GmsModemState current_status_simcom;
 extern char rx_buffer[700];
 extern char rx_data_sim[700];
-extern char array_json[400];
+extern char array_json[700];
 extern char rx_buffer_ec[20];
 extern char rx_buffer_ph[20];
 extern char rx_buffer_do[100];;

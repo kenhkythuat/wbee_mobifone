@@ -263,9 +263,9 @@ int main(void) {
       create_JSON_LCD();
       HAL_Delay(200);
       is_publish_data_lcd = update_data_to_sreen((uint8_t *)array_json);
-      sprintf(tx5_status_pump, data_status_pump, SERIAL_NUMBER, motor_ph_plus, motor_ph_minus, motor_x);
-      HAL_Delay(700);
-      is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
+//      sprintf(tx5_status_pump, data_status_pump, SERIAL_NUMBER, motor_ph_plus, motor_ph_minus, motor_x);
+//      HAL_Delay(700);
+//      is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
       lcd_update_counter_1hz = 0;
     }
     // process_uart_rx();

@@ -24,6 +24,7 @@ bool mobi_mqtt_publish_config_state(void);
 bool mobi_mqtt_publish_status_online(void);
 bool mobi_mqtt_publish_status_offline(void);
 bool mobi_mqtt_disconnect(void);
+void mobi_mqtt_build_telemetry_json(bool refresh_rssi);
 
 bool mobi_mqtt_publish_command_response(const char *request_id,
                                         const char *command,

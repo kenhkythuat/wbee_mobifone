@@ -24,7 +24,7 @@ extern UART_HandleTypeDef huart5;
 /* USER CODE BEGIN 0 */
 char rx_data_sim[700];
 char array_at_command[400];
-char array_json[400];
+char array_json[700];
 
 char test_lcd[10]="hello";
 ph_ctrl_cfg_t g_cfg_simcom;
@@ -430,12 +430,16 @@ void create_JSON(void) {
     cJSON_Delete(json);
     return;
   }
-  sprintf(array_json, "%s", json_string);
+  snprintf(array_json, sizeof(array_json), "%s", json_string);
   // decompress memory
   free(json_string);
   cJSON_Delete(json);
 }
 void create_JSON_LCD(void) {
+#if SENSOR_DATA_SOURCE == SENSOR_SOURCE_PLC_RS485
+  mobi_mqtt_build_telemetry_json(false);
+  return;
+#else
   cJSON *json = cJSON_CreateObject();
   data_percentage_pin = read_level_pin();
   cJSON_AddNumberToObject(json, "_gsm_signal_strength", rssi);
@@ -567,10 +571,11 @@ void create_JSON_LCD(void) {
     cJSON_Delete(json);
     return;
   }
-  sprintf(array_json, "%s", json_string);
+  snprintf(array_json, sizeof(array_json), "%s", json_string);
   // decompress memory
   free(json_string);
   cJSON_Delete(json);
+#endif
 }
 
 void create_Json_status_motor(void)
@@ -586,7 +591,7 @@ void create_Json_status_motor(void)
 	    cJSON_Delete(json);
 	    return;
 	  }
-	  sprintf(array_json, "%s", json_string);
+	  snprintf(array_json, sizeof(array_json), "%s", json_string);
 	  // decompress memory
 	  free(json_string);
 	  cJSON_Delete(json);
@@ -636,11 +641,39 @@ void sleep_stm32(void) {
   NVIC_SystemReset();
 }
 
-bool update_data_to_sreen(uint8_t *data){
-	  printf("update data to screen \r\n");
-	  HAL_UART_Transmit(&huart5, data, strlen((const char *)data), 200);
-	  return 1;
-	return 0;
+bool update_data_to_sreen(uint8_t *data) {
+  size_t len;
+  uint32_t timeout_ms;
+  HAL_StatusTypeDef status;
+
+  if (data == NULL) {
+    return false;
+  }
+
+  len = strlen((const char *)data);
+  if (len == 0U) {
+    return false;
+  }
+
+  printf("update data to screen len=%u\r\n", (unsigned int)len);
+
+  timeout_ms = (uint32_t)(len * 3U) + 500U;
+  status = HAL_UART_Transmit(&huart5, data, (uint16_t)len, timeout_ms);
+  if (status != HAL_OK) {
+    printf("update data to screen fail status=%d\r\n", status);
+    return false;
+  }
+
+  if (len < 2U || data[len - 2U] != '\r' || data[len - 1U] != '\n') {
+    uint8_t newline[] = "\r\n";
+    status = HAL_UART_Transmit(&huart5, newline, 2U, 100U);
+    if (status != HAL_OK) {
+      printf("update data to screen newline fail status=%d\r\n", status);
+      return false;
+    }
+  }
+
+  return true;
 }
 
 void check_handle_state(enum GmsModemState status) {

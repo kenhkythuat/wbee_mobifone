@@ -15,7 +15,7 @@
 
 extern char rx_data_sim[700];
 extern char array_at_command[400];
-extern char array_json[400];
+extern char array_json[700];
 extern int rssi;
 
 extern void send_to_simcom_a76xx(char *cmd);
@@ -129,7 +129,7 @@ static void build_config_state_payload(void) {
   cJSON_Delete(json);
 }
 
-static void build_telemetry_payload(void) {
+void mobi_mqtt_build_telemetry_json(bool refresh_rssi) {
   cJSON *json = cJSON_CreateObject();
   cJSON_AddStringToObject(json, "device_id", SERIAL_NUMBER);
 
@@ -145,12 +145,19 @@ static void build_telemetry_payload(void) {
   add_nullable_number(json, "ozone", plc_data.has_ozone, plc_data.ozone);
   add_nullable_number(json, "pressure_o2", plc_data.has_pressure,
                       plc_data.pressure);
-  add_nullable_uint(json, "x2", plc_data.has_x2_full_tank,
-                    plc_data.x2_full_tank);
-  add_nullable_uint(json, "y1", plc_data.has_y1_module_on,
-                    plc_data.y1_module_on);
-  add_nullable_uint(json, "y24", plc_data.has_y24_module_on,
-                    plc_data.y24_module_on);
+  add_nullable_number(json, "temp_data_1", plc_data.has_temp_data_1,
+                      plc_data.temp_data_1);
+  add_nullable_number(json, "temp_data_2", plc_data.has_temp_data_2,
+                      plc_data.temp_data_2);
+  add_nullable_number(json, "temp_data_3", plc_data.has_temp_data_3,
+                      plc_data.temp_data_3);
+  add_nullable_uint(json, "input_x", plc_data.has_input_x, plc_data.input_x);
+  add_nullable_uint(json, "output_1", plc_data.has_output_1,
+                    plc_data.output_1);
+  add_nullable_uint(json, "output_2", plc_data.has_output_2,
+                    plc_data.output_2);
+  add_nullable_uint(json, "error_code", plc_data.has_error_code,
+                    plc_data.error_code);
 #else
   bool has_ph1 = false;
   bool has_do = false;
@@ -176,9 +183,18 @@ static void build_telemetry_payload(void) {
   add_nullable_number(json, "turbidity", false, 0.0);
   add_nullable_number(json, "ozone", false, 0.0);
   add_nullable_number(json, "pressure_o2", false, 0.0);
+  add_nullable_number(json, "temp_data_1", false, 0.0);
+  add_nullable_number(json, "temp_data_2", false, 0.0);
+  add_nullable_number(json, "temp_data_3", false, 0.0);
+  add_nullable_uint(json, "input_x", false, 0);
+  add_nullable_uint(json, "output_1", false, 0);
+  add_nullable_uint(json, "output_2", false, 0);
+  add_nullable_uint(json, "error_code", false, 0);
 #endif
 
-  rssi = read_signal_quality();
+  if (refresh_rssi) {
+    rssi = read_signal_quality();
+  }
   cJSON_AddNumberToObject(json, "rssi", rssi);
   json_to_array(json);
   cJSON_Delete(json);
@@ -477,7 +493,7 @@ bool mobi_mqtt_publish_config_state(void) {
 }
 
 bool mobi_mqtt_publish_telemetry(void) {
-  build_telemetry_payload();
+  mobi_mqtt_build_telemetry_json(true);
   return mqtt_publish_raw(MQTT_TOPIC_TELEMETRY, array_json, MQTT_QOS,
                           MQTT_RETAIN);
 }

@@ -44,16 +44,20 @@ static bool modbus_ascii_decode(const uint8_t *data, uint16_t len,
   uint16_t end = len;
   uint16_t count = 0;
 
-  while (start < len && data[start] != ':') {
+  while (start < len && (data[start] == '\r' || data[start] == '\n' ||
+                         data[start] == ' ' || data[start] == '\t')) {
     start++;
   }
   if (start >= len) {
     return false;
   }
+  if (data[start] == ':') {
+    start++;
+  }
 
-  start++;
   while (end > start && (data[end - 1] == '\r' || data[end - 1] == '\n' ||
-                         data[end - 1] == '\0')) {
+                         data[end - 1] == '\0' || data[end - 1] == ' ' ||
+                         data[end - 1] == '\t')) {
     end--;
   }
   if (((end - start) % 2U) != 0U) {
@@ -107,14 +111,18 @@ static void update_scaled_value(const uint16_t *regs, uint16_t count,
   }
 }
 
-static void update_bit_value(const uint16_t *regs, uint16_t count,
-                             uint16_t start_addr, uint16_t address,
-                             uint8_t bit_index, uint8_t *value,
-                             bool *has_value) {
+static void update_active_bit_index(const uint16_t *regs, uint16_t count,
+                                    uint16_t start_addr, uint16_t address,
+                                    uint8_t *value, bool *has_value) {
   uint16_t raw;
-  if (get_register_value(regs, start_addr, count, address, &raw) &&
-      bit_index < 16U) {
-    *value = (uint8_t)((raw >> bit_index) & 0x01U);
+  if (get_register_value(regs, start_addr, count, address, &raw)) {
+    *value = 0;
+    for (uint8_t bit_index = 0; bit_index < 16U; bit_index++) {
+      if (((raw >> bit_index) & 0x01U) != 0U) {
+        *value = bit_index;
+        break;
+      }
+    }
     *has_value = true;
   }
 }
@@ -171,15 +179,24 @@ static bool parse_write_multiple_registers(const uint8_t *frame,
   update_scaled_value(regs, quantity, start_addr, PLC_REG_PRESSURE,
                       PLC_SCALE_PRESSURE, &g_plc_data.pressure,
                       &g_plc_data.has_pressure);
-  update_bit_value(regs, quantity, start_addr, PLC_REG_X2_STATUS,
-                   PLC_BIT_X2_FULL_TANK, &g_plc_data.x2_full_tank,
-                   &g_plc_data.has_x2_full_tank);
-  update_bit_value(regs, quantity, start_addr, PLC_REG_Y1_STATUS,
-                   PLC_BIT_Y1_MODULE_ON, &g_plc_data.y1_module_on,
-                   &g_plc_data.has_y1_module_on);
-  update_bit_value(regs, quantity, start_addr, PLC_REG_Y24_STATUS,
-                   PLC_BIT_Y24_MODULE_ON, &g_plc_data.y24_module_on,
-                   &g_plc_data.has_y24_module_on);
+  update_scaled_value(regs, quantity, start_addr, PLC_REG_TEMP_DATA_1,
+                      PLC_SCALE_TEMP_DATA_1, &g_plc_data.temp_data_1,
+                      &g_plc_data.has_temp_data_1);
+  update_scaled_value(regs, quantity, start_addr, PLC_REG_TEMP_DATA_2,
+                      PLC_SCALE_TEMP_DATA_2, &g_plc_data.temp_data_2,
+                      &g_plc_data.has_temp_data_2);
+  update_scaled_value(regs, quantity, start_addr, PLC_REG_TEMP_DATA_3,
+                      PLC_SCALE_TEMP_DATA_3, &g_plc_data.temp_data_3,
+                      &g_plc_data.has_temp_data_3);
+  update_active_bit_index(regs, quantity, start_addr, PLC_REG_INPUT_X,
+                          &g_plc_data.input_x, &g_plc_data.has_input_x);
+  update_active_bit_index(regs, quantity, start_addr, PLC_REG_OUTPUT_1,
+                          &g_plc_data.output_1, &g_plc_data.has_output_1);
+  update_active_bit_index(regs, quantity, start_addr, PLC_REG_OUTPUT_2,
+                          &g_plc_data.output_2, &g_plc_data.has_output_2);
+  update_active_bit_index(regs, quantity, start_addr, PLC_REG_ERROR_CODE,
+                          &g_plc_data.error_code,
+                          &g_plc_data.has_error_code);
 
   g_plc_data.is_online = true;
   g_plc_timeout_counter_s = 0;
@@ -199,6 +216,22 @@ void plc_rs485_on_uart_rx(const uint8_t *data, uint16_t len) {
   uint16_t frame_len = 0;
   uint16_t pos = 0;
   bool parsed_any = false;
+
+  if (memchr(data, ':', len) == NULL) {
+    if (!modbus_ascii_decode(data, len, frame, &frame_len)) {
+      printf("PLC RS485 frame decode fail\r\n");
+      return;
+    }
+    if (!modbus_ascii_lrc_ok(frame, frame_len)) {
+      printf("PLC RS485 LRC error\r\n");
+      return;
+    }
+    if (!parse_write_multiple_registers(frame, frame_len)) {
+      printf("PLC RS485 unsupported frame\r\n");
+      return;
+    }
+    return;
+  }
 
   while (pos < len) {
     uint16_t start = pos;
@@ -243,10 +276,10 @@ void plc_rs485_on_uart_rx(const uint8_t *data, uint16_t len) {
 }
 
 void plc_rs485_tick_1s(void) {
-  if (g_plc_timeout_counter_s < PLC_RS485_TIMEOUT_SEC) {
+  if (g_plc_timeout_counter_s <= PLC_RS485_TIMEOUT_SEC) {
     g_plc_timeout_counter_s++;
   }
-  if (g_plc_timeout_counter_s >= PLC_RS485_TIMEOUT_SEC &&
+  if (g_plc_timeout_counter_s > PLC_RS485_TIMEOUT_SEC &&
       !g_plc_timeout_logged) {
     g_plc_data.is_online = false;
     g_plc_data.has_ph1 = false;
@@ -255,9 +288,13 @@ void plc_rs485_tick_1s(void) {
     g_plc_data.has_turbidity = false;
     g_plc_data.has_ozone = false;
     g_plc_data.has_pressure = false;
-    g_plc_data.has_x2_full_tank = false;
-    g_plc_data.has_y1_module_on = false;
-    g_plc_data.has_y24_module_on = false;
+    g_plc_data.has_temp_data_1 = false;
+    g_plc_data.has_temp_data_2 = false;
+    g_plc_data.has_temp_data_3 = false;
+    g_plc_data.has_input_x = false;
+    g_plc_data.has_output_1 = false;
+    g_plc_data.has_output_2 = false;
+    g_plc_data.has_error_code = false;
     g_plc_timeout_logged = true;
     printf("PLC RS485 timeout: no data for %d seconds\r\n",
            PLC_RS485_TIMEOUT_SEC);
