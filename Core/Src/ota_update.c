@@ -187,9 +187,24 @@ static bool simcom_http_open(const char *url, uint32_t *content_len) {
   int status = 0;
   int length = 0;
   char *action;
+  bool is_https = strncmp(url, "https://", 8) == 0;
 
   send_to_simcom_a76xx("AT+HTTPTERM\r\n");
   HAL_Delay(300);
+
+  if (is_https) {
+    simcom_clear_rx();
+    send_to_simcom_a76xx("AT+CSSLCFG=\"sslversion\",0,4\r\n");
+    simcom_wait_for("OK", 2000);
+
+    simcom_clear_rx();
+    send_to_simcom_a76xx("AT+CSSLCFG=\"authmode\",0,0\r\n");
+    simcom_wait_for("OK", 2000);
+
+    simcom_clear_rx();
+    send_to_simcom_a76xx("AT+CSSLCFG=\"enableSNI\",0,1\r\n");
+    simcom_wait_for("OK", 2000);
+  }
 
   simcom_clear_rx();
   send_to_simcom_a76xx("AT+HTTPINIT\r\n");
@@ -200,6 +215,20 @@ static bool simcom_http_open(const char *url, uint32_t *content_len) {
 
   simcom_clear_rx();
   send_to_simcom_a76xx("AT+HTTPPARA=\"CID\",1\r\n");
+  simcom_wait_for("OK", 1000);
+
+  if (is_https) {
+    simcom_clear_rx();
+    send_to_simcom_a76xx("AT+HTTPPARA=\"SSLCFG\",0\r\n");
+    simcom_wait_for("OK", 1000);
+  }
+
+  simcom_clear_rx();
+  send_to_simcom_a76xx("AT+HTTPPARA=\"CONNECTTO\",120\r\n");
+  simcom_wait_for("OK", 1000);
+
+  simcom_clear_rx();
+  send_to_simcom_a76xx("AT+HTTPPARA=\"RECVTO\",120\r\n");
   simcom_wait_for("OK", 1000);
 
   simcom_clear_rx();

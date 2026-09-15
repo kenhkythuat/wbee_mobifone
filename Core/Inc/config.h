@@ -16,7 +16,7 @@
 #define VERSION_WBEE "2.1"
 
 #define OTA_ENABLE 1
-#define OTA_GITLAB_MANIFEST_URL "https://gitlab.com/agriconnect/embedded/wbee/-/raw/main/ota/manifest.json"
+#define OTA_GITLAB_MANIFEST_URL "https://gitlab.com/agriconnect/embedded/wbee/-/raw/feature/ota_mobifone/ota/manifest.json"
 #define OTA_BOOTLOADER_SIZE (32U * 1024U)
 #define OTA_FLASH_BASE 0x08000000UL
 #define OTA_FLASH_SIZE (512U * 1024U)
