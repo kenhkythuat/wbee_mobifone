@@ -131,6 +131,12 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
       printf("--------------Client Disconnect passively!---------------\n");
       current_status_simcom = On;
     }
+    if ((strstr((char *)rx_buffer, "ota_check") != NULL ||
+         strstr((char *)rx_buffer, "ota_update") != NULL) &&
+        is_pb_done == true) {
+      printf("--------------OTA request received---------------\r\n");
+      to_start_ota = true;
+    }
   }
   else if (huart->Instance == UART5)
   {

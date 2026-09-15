@@ -15,6 +15,18 @@
 
 #define VERSION_WBEE "2.1"
 
+#define OTA_ENABLE 1
+#define OTA_GITLAB_MANIFEST_URL "https://gitlab.com/agriconnect/embedded/wbee/-/raw/main/ota/manifest.json"
+#define OTA_BOOTLOADER_SIZE (32U * 1024U)
+#define OTA_FLASH_BASE 0x08000000UL
+#define OTA_FLASH_SIZE (512U * 1024U)
+#define OTA_FLASH_PAGE_SIZE 0x800U
+#define OTA_APP_START_ADDR (OTA_FLASH_BASE + OTA_BOOTLOADER_SIZE)
+#define OTA_APP_MAX_SIZE (224U * 1024U)
+#define OTA_STAGING_START_ADDR 0x08040000UL
+#define OTA_STAGING_MAX_SIZE 0x0003F000UL
+#define OTA_METADATA_ADDR 0x0807F000UL
+
 #define a7672s 1  // 4G
 #define a7670c 2  // 4G
 #define a7670sa 3 // 4G

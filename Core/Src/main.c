@@ -26,6 +26,7 @@
 #include "ph_pump_isr.h"
 #include "ph_pump_scheduler.h"
 #include "plc_rs485.h"
+#include "ota_update.h"
 #include "stdbool.h"
 #include "stdio.h"
 #include "stdlib.h"
@@ -230,6 +231,7 @@ int main(void) {
   HAL_GPIO_WritePin(GPIOA, ENABLE_SENSOR_Pin, GPIO_PIN_SET);
   HAL_Delay(500);
   plc_rs485_init();
+  ota_init();
   sprintf(tx5_status_pump, data_status_pump, SERIAL_NUMBER, motor_ph_plus, motor_ph_minus, motor_x);
   is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
   cfg_load_from_flash();
@@ -254,6 +256,19 @@ int main(void) {
 
     /* USER CODE BEGIN 3 */
     check_handle_state(current_status_simcom);
+    if (to_start_ota && current_status_simcom == Subscribed) {
+      ota_result_t ota_result;
+      to_start_ota = false;
+      printf("Start OTA check\r\n");
+      ota_result = ota_check_and_download();
+      if (ota_result == OTA_RESULT_OK) {
+        printf("OTA image pending. Reset after bootloader is ready.\r\n");
+      } else if (ota_result == OTA_RESULT_NO_UPDATE) {
+        printf("OTA no newer version\r\n");
+      } else {
+        printf("OTA failed\r\n");
+      }
+    }
     if (lcd_update_counter_1hz > 5) {
       IWDG->KR = 0xAAAA;
       // process_uart_rx();

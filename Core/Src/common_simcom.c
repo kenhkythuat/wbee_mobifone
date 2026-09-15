@@ -53,6 +53,7 @@ bool is_at_rel_mqtt = false;
 bool is_at_stop_mqtt = false;
 bool is_inital_check = false;
 bool to_send_status_to_server = false;
+bool to_start_ota = false;
 //volatile bool control_mode;
 
 uint16_t count_errors = 0;
