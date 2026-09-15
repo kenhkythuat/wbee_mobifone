@@ -17,6 +17,8 @@
 
 #define OTA_ENABLE 1
 #define OTA_MANIFEST_URL "https://raw.githubusercontent.com/kenhkythuat/wbee_mobifone/feature/ota_mobifone/ota/manifest.json"
+#define OTA_MANIFEST_URL_FALLBACK_1 "https://raw.githubusercontent.com/kenhkythuat/wbee_mobifone/main/ota/manifest.json"
+#define OTA_MANIFEST_URL_FALLBACK_2 "https://raw.githubusercontent.com/kenhkythuat/wbee_mobifone/master/ota/manifest.json"
 #define OTA_BOOTLOADER_SIZE (32U * 1024U)
 #define OTA_FLASH_BASE 0x08000000UL
 #define OTA_FLASH_SIZE (512U * 1024U)

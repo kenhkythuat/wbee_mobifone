@@ -458,6 +458,15 @@ void ota_init(void) {
 
 bool ota_load_manifest_from_github(ota_manifest_t *manifest) {
   char manifest_json[512];
+  const char *manifest_urls[] = {
+      OTA_MANIFEST_URL,
+#ifdef OTA_MANIFEST_URL_FALLBACK_1
+      OTA_MANIFEST_URL_FALLBACK_1,
+#endif
+#ifdef OTA_MANIFEST_URL_FALLBACK_2
+      OTA_MANIFEST_URL_FALLBACK_2,
+#endif
+  };
   cJSON *json;
   cJSON *version;
   cJSON *hex_url;
@@ -467,8 +476,19 @@ bool ota_load_manifest_from_github(ota_manifest_t *manifest) {
   }
   memset(manifest, 0, sizeof(*manifest));
 
-  if (!http_get_small(OTA_MANIFEST_URL, manifest_json, sizeof(manifest_json))) {
-    printf("[OTA] manifest download fail\r\n");
+  bool downloaded = false;
+  for (uint8_t i = 0; i < (sizeof(manifest_urls) / sizeof(manifest_urls[0]));
+       i++) {
+    printf("[OTA] manifest url %u\r\n", i);
+    if (http_get_small(manifest_urls[i], manifest_json, sizeof(manifest_json))) {
+      downloaded = true;
+      break;
+    }
+    printf("[OTA] manifest url %u fail\r\n", i);
+  }
+
+  if (!downloaded) {
+    printf("[OTA] manifest download fail all urls\r\n");
     return false;
   }
 
