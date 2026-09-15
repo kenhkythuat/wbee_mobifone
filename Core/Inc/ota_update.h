@@ -1,7 +1,7 @@
 /*
  * ota_update.h
  *
- * App-side OTA downloader for SIMCOM A7680 + GitLab raw files.
+ * App-side OTA downloader for SIMCOM A7680 + GitHub raw files.
  */
 #ifndef INC_OTA_UPDATE_H_
 #define INC_OTA_UPDATE_H_
@@ -25,7 +25,7 @@ typedef struct {
 
 void ota_init(void);
 ota_result_t ota_check_and_download(void);
-bool ota_load_manifest_from_gitlab(ota_manifest_t *manifest);
+bool ota_load_manifest_from_github(ota_manifest_t *manifest);
 bool ota_download_hex_to_staging(const ota_manifest_t *manifest);
 bool ota_mark_pending(const ota_manifest_t *manifest);
 bool ota_metadata_is_pending(void);

@@ -1,7 +1,7 @@
 /*
  * ota_update.c
  *
- * Downloads Intel HEX firmware from GitLab via SIMCOM A7680 HTTP(S), writes it
+ * Downloads Intel HEX firmware from GitHub via SIMCOM A7680 HTTP(S), writes it
  * to the OTA staging flash area, verifies size/CRC, and marks it pending for a
  * bootloader to install after reset.
  */
@@ -456,7 +456,7 @@ void ota_init(void) {
   }
 }
 
-bool ota_load_manifest_from_gitlab(ota_manifest_t *manifest) {
+bool ota_load_manifest_from_github(ota_manifest_t *manifest) {
   char manifest_json[512];
   cJSON *json;
   cJSON *version;
@@ -467,8 +467,7 @@ bool ota_load_manifest_from_gitlab(ota_manifest_t *manifest) {
   }
   memset(manifest, 0, sizeof(*manifest));
 
-  if (!http_get_small(OTA_GITLAB_MANIFEST_URL, manifest_json,
-                      sizeof(manifest_json))) {
+  if (!http_get_small(OTA_MANIFEST_URL, manifest_json, sizeof(manifest_json))) {
     printf("[OTA] manifest download fail\r\n");
     return false;
   }
@@ -585,8 +584,8 @@ bool ota_mark_pending(const ota_manifest_t *manifest) {
 ota_result_t ota_check_and_download(void) {
   ota_manifest_t manifest;
 
-  printf("[OTA] check GitLab manifest\r\n");
-  if (!ota_load_manifest_from_gitlab(&manifest)) {
+  printf("[OTA] check GitHub manifest\r\n");
+  if (!ota_load_manifest_from_github(&manifest)) {
     return OTA_RESULT_ERROR;
   }
 
@@ -612,7 +611,7 @@ ota_result_t ota_check_and_download(void) {
 
 void ota_init(void) {}
 ota_result_t ota_check_and_download(void) { return OTA_RESULT_NO_UPDATE; }
-bool ota_load_manifest_from_gitlab(ota_manifest_t *manifest) {
+bool ota_load_manifest_from_github(ota_manifest_t *manifest) {
   (void)manifest;
   return false;
 }
