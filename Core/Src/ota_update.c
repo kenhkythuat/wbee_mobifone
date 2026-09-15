@@ -516,8 +516,27 @@ bool ota_load_manifest_from_github(ota_manifest_t *manifest) {
   manifest->crc32 = parse_u32_field(json, "crc32", 0);
   cJSON_Delete(json);
 
-  return manifest->size > 0U && manifest->crc32 != 0U &&
-         manifest->app_addr == OTA_APP_START_ADDR;
+  printf("[OTA] manifest version=%s app=0x%08lX size=%lu crc=0x%08lX\r\n",
+         manifest->version, (unsigned long)manifest->app_addr,
+         (unsigned long)manifest->size, (unsigned long)manifest->crc32);
+  printf("[OTA] manifest hex=%s\r\n", manifest->hex_url);
+
+  if (manifest->app_addr != OTA_APP_START_ADDR) {
+    printf("[OTA] manifest invalid app_addr, expected 0x%08lX\r\n",
+           (unsigned long)OTA_APP_START_ADDR);
+    return false;
+  }
+  if (manifest->size == 0U || manifest->size > OTA_APP_MAX_SIZE ||
+      manifest->size > OTA_STAGING_MAX_SIZE) {
+    printf("[OTA] manifest invalid size\r\n");
+    return false;
+  }
+  if (manifest->crc32 == 0U) {
+    printf("[OTA] manifest invalid crc32\r\n");
+    return false;
+  }
+
+  return true;
 }
 
 bool ota_download_hex_to_staging(const ota_manifest_t *manifest) {
