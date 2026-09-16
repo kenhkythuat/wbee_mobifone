@@ -13,21 +13,15 @@
 
 // Codename of the farm, where we deploy this node to.
 
-#define VERSION_WBEE "2.1"
+#define VERSION_WBEE "2.2"
 
 #define OTA_ENABLE 1
 #define OTA_MANIFEST_URL "https://raw.githubusercontent.com/kenhkythuat/wbee_mobifone/feature/ota_mobifone/ota/manifest.json"
 #define OTA_MANIFEST_URL_FALLBACK_1 "https://raw.githubusercontent.com/kenhkythuat/wbee_mobifone/main/ota/manifest.json"
 #define OTA_MANIFEST_URL_FALLBACK_2 "https://raw.githubusercontent.com/kenhkythuat/wbee_mobifone/master/ota/manifest.json"
-#define OTA_BOOTLOADER_SIZE (32U * 1024U)
-#define OTA_FLASH_BASE 0x08000000UL
-#define OTA_FLASH_SIZE (512U * 1024U)
-#define OTA_FLASH_PAGE_SIZE 0x800U
-#define OTA_APP_START_ADDR (OTA_FLASH_BASE + OTA_BOOTLOADER_SIZE)
-#define OTA_APP_MAX_SIZE (224U * 1024U)
-#define OTA_STAGING_START_ADDR 0x08040000UL
-#define OTA_STAGING_MAX_SIZE 0x0003F000UL
-#define OTA_METADATA_ADDR 0x0807F000UL
+#define OTA_DEVICE_ID "wbee-stm32f103ret6"
+
+#include "ota_layout.h"
 
 #define a7672s 1  // 4G
 #define a7670c 2  // 4G

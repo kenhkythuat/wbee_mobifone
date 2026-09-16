@@ -262,9 +262,13 @@ int main(void) {
       printf("Start OTA check\r\n");
       ota_result = ota_check_and_download();
       if (ota_result == OTA_RESULT_OK) {
-        printf("OTA image pending. Reset after bootloader is ready.\r\n");
+        printf("OTA verified. Resetting to bootloader...\r\n");
+        HAL_Delay(500);
+        NVIC_SystemReset();
       } else if (ota_result == OTA_RESULT_NO_UPDATE) {
         printf("OTA no newer version\r\n");
+      } else if (ota_result == OTA_RESULT_BUSY) {
+        printf("OTA is already running\r\n");
       } else {
         printf("OTA failed\r\n");
       }
