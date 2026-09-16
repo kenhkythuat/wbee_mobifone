@@ -132,6 +132,7 @@ static void build_config_state_payload(void) {
 void mobi_mqtt_build_telemetry_json(bool refresh_rssi) {
   cJSON *json = cJSON_CreateObject();
   cJSON_AddStringToObject(json, "device_id", SERIAL_NUMBER);
+  cJSON_AddStringToObject(json, "firmware_version", VERSION_WBEE);
 
 #if SENSOR_DATA_SOURCE == SENSOR_SOURCE_PLC_RS485
   plc_rs485_data_t plc_data;
