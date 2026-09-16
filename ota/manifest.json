@@ -1,8 +1,8 @@
 {
-  "version": "2.5",
+  "version": "2.6",
   "device": "wbee-stm32f103ret6",
   "app_addr": "0x08008000",
   "size": 75184,
   "crc32": "0x045F2295",
-  "bin_url": "https://raw.githubusercontent.com/kenhkythuat/wbee_mobifone/feature/ota_mobifone/ota/wbee_v2.5.bin"
+  "bin_url": "https://raw.githubusercontent.com/kenhkythuat/wbee_mobifone/feature/ota_mobifone/ota/wbee_v2.6.bin"
 }
