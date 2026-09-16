@@ -112,15 +112,40 @@ static bool wait_for_text(const char *text, uint32_t timeout_ms) {
 static bool send_command_wait(const char *command, const char *expected,
                               uint32_t timeout_ms) {
   bool ok;
+  uint16_t response_len;
 
   capture_begin();
   send_to_simcom_a76xx((char *)command);
   ok = wait_for_text(expected, timeout_ms);
   if (!ok) {
-    printf("[OTA] command fail: %s", command);
+    response_len = s_uart_capture_len;
+    printf("[OTA] command failed: %s", command);
+    if (response_len > 0U) {
+      printf("[OTA] SIMCOM response (%u bytes):\r\n%.*s\r\n", response_len,
+             response_len, (const char *)s_uart_capture);
+    } else {
+      printf("[OTA] SIMCOM response: <timeout>\r\n");
+    }
   }
   capture_end();
   return ok;
+}
+
+static void http_terminate_if_active(void) {
+  uint32_t started;
+
+  capture_begin();
+  send_to_simcom_a76xx("AT+HTTPTERM\r\n");
+  started = HAL_GetTick();
+  while ((HAL_GetTick() - started) < 1500U) {
+    if (capture_find("\r\nOK\r\n") >= 0 ||
+        capture_find("\r\nERROR\r\n") >= 0) {
+      break;
+    }
+    watchdog_feed();
+    HAL_Delay(10);
+  }
+  capture_end();
 }
 
 static bool flash_erase_pages(uint32_t start_addr, uint32_t size) {
@@ -255,7 +280,8 @@ static bool http_open(const char *url, uint32_t *content_length) {
   int length = 0;
   int32_t action_at;
 
-  (void)send_command_wait("AT+HTTPTERM\r\n", "OK", 1000U);
+  /* ERROR is normal here when no previous HTTP session exists. */
+  http_terminate_if_active();
   if (!send_command_wait("AT+CSSLCFG=\"sslversion\",0,4\r\n", "OK",
                          2000U) ||
       !send_command_wait("AT+CSSLCFG=\"authmode\",0,0\r\n", "OK",
@@ -263,7 +289,6 @@ static bool http_open(const char *url, uint32_t *content_length) {
       !send_command_wait("AT+CSSLCFG=\"enableSNI\",0,1\r\n", "OK",
                          2000U) ||
       !send_command_wait("AT+HTTPINIT\r\n", "OK", 3000U) ||
-      !send_command_wait("AT+HTTPPARA=\"CID\",1\r\n", "OK", 2000U) ||
       !send_command_wait("AT+HTTPPARA=\"SSLCFG\",0\r\n", "OK", 2000U) ||
       !send_command_wait("AT+HTTPPARA=\"CONNECTTO\",120\r\n", "OK",
                          2000U) ||
@@ -307,7 +332,7 @@ static bool http_open(const char *url, uint32_t *content_length) {
 }
 
 static void http_close(void) {
-  (void)send_command_wait("AT+HTTPTERM\r\n", "OK", 2000U);
+  http_terminate_if_active();
 }
 
 static bool parse_httpread_header(uint16_t *body_at, uint16_t *body_length) {

@@ -13,7 +13,7 @@
 
 // Codename of the farm, where we deploy this node to.
 
-#define VERSION_WBEE "2.2"
+#define VERSION_WBEE "2.3"
 
 #define OTA_ENABLE 1
 #define OTA_MANIFEST_URL "https://raw.githubusercontent.com/kenhkythuat/wbee_mobifone/feature/ota_mobifone/ota/manifest.json"
@@ -35,7 +35,7 @@
 
 // Serial number. Must be lower case.
 #ifndef SERIAL_NUMBER
-  #define SERIAL_NUMBER "wb000001"
+  #define SERIAL_NUMBER "wb000002"
 #endif
 
 #define true 1
