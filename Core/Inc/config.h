@@ -13,7 +13,7 @@
 
 // Codename of the farm, where we deploy this node to.
 
-#define VERSION_WBEE "2.4"
+#define VERSION_WBEE "2.5"
 
 #define OTA_ENABLE 1
 #define OTA_MANIFEST_URL "https://raw.githubusercontent.com/kenhkythuat/wbee_mobifone/feature/ota_mobifone/ota/manifest.json"
