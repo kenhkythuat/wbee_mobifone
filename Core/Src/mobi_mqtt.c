@@ -6,6 +6,7 @@
 #include "mobi_mqtt.h"
 
 #include "cJSON.h"
+#include "cfg_store.h"
 #include "config.h"
 #include "main.h"
 #include "plc_rs485.h"
@@ -20,6 +21,42 @@ extern int rssi;
 
 extern void send_to_simcom_a76xx(char *cmd);
 extern int read_signal_quality(void);
+
+#define MQTT_TOPIC_BUFFER_SIZE 96
+#define MQTT_CLIENT_ID_BUFFER_SIZE 40
+
+static char s_mqtt_client_id[MQTT_CLIENT_ID_BUFFER_SIZE];
+static char s_topic_telemetry[MQTT_TOPIC_BUFFER_SIZE];
+static char s_topic_status[MQTT_TOPIC_BUFFER_SIZE];
+static char s_topic_config_set[MQTT_TOPIC_BUFFER_SIZE];
+static char s_topic_config_get[MQTT_TOPIC_BUFFER_SIZE];
+static char s_topic_config_state[MQTT_TOPIC_BUFFER_SIZE];
+static char s_topic_config_response[MQTT_TOPIC_BUFFER_SIZE];
+static char s_topic_command_request[MQTT_TOPIC_BUFFER_SIZE];
+static char s_topic_command_response[MQTT_TOPIC_BUFFER_SIZE];
+
+static void mqtt_refresh_identity(void) {
+  const char *serial_number = device_serial_get();
+
+  snprintf(s_mqtt_client_id, sizeof(s_mqtt_client_id), "mobi-%s",
+           serial_number);
+  snprintf(s_topic_telemetry, sizeof(s_topic_telemetry), "%s/%s/telemetry",
+           FARM, serial_number);
+  snprintf(s_topic_status, sizeof(s_topic_status), "%s/%s/status", FARM,
+           serial_number);
+  snprintf(s_topic_config_set, sizeof(s_topic_config_set), "%s/%s/config/set",
+           FARM, serial_number);
+  snprintf(s_topic_config_get, sizeof(s_topic_config_get), "%s/%s/config/get",
+           FARM, serial_number);
+  snprintf(s_topic_config_state, sizeof(s_topic_config_state),
+           "%s/%s/config/state", FARM, serial_number);
+  snprintf(s_topic_config_response, sizeof(s_topic_config_response),
+           "%s/%s/config/response", FARM, serial_number);
+  snprintf(s_topic_command_request, sizeof(s_topic_command_request),
+           "%s/%s/command/request", FARM, serial_number);
+  snprintf(s_topic_command_response, sizeof(s_topic_command_response),
+           "%s/%s/command/response", FARM, serial_number);
+}
 
 static void simcom_clear_rx(void) {
   memset(rx_data_sim, '\0', sizeof(rx_data_sim));
@@ -107,7 +144,7 @@ static void add_nullable_uint(cJSON *json, const char *name, bool has_value,
 
 static void build_status_payload(const char *status) {
   cJSON *json = cJSON_CreateObject();
-  cJSON_AddStringToObject(json, "device_id", SERIAL_NUMBER);
+  cJSON_AddStringToObject(json, "device_id", device_serial_get());
   cJSON_AddStringToObject(json, "status", status);
   if (strcmp(status, "online") == 0) {
     cJSON_AddStringToObject(json, "firmware_version", VERSION_WBEE);
@@ -120,7 +157,7 @@ static void build_status_payload(const char *status) {
 
 static void build_config_state_payload(void) {
   cJSON *json = cJSON_CreateObject();
-  cJSON_AddStringToObject(json, "device_id", SERIAL_NUMBER);
+  cJSON_AddStringToObject(json, "device_id", device_serial_get());
   cJSON_AddNumberToObject(json, "telemetry_interval_s",
                           TELEMETRY_INTERVAL_DEFAULT_S);
   cJSON_AddNumberToObject(json, "sensor_sample_interval_s",
@@ -131,7 +168,7 @@ static void build_config_state_payload(void) {
 
 void mobi_mqtt_build_telemetry_json(bool refresh_rssi) {
   cJSON *json = cJSON_CreateObject();
-  cJSON_AddStringToObject(json, "device_id", SERIAL_NUMBER);
+  cJSON_AddStringToObject(json, "device_id", device_serial_get());
   cJSON_AddStringToObject(json, "firmware_version", VERSION_WBEE);
 
 #if SENSOR_DATA_SOURCE == SENSOR_SOURCE_PLC_RS485
@@ -310,10 +347,11 @@ static bool mqtt_subscribe_raw(const char *topic) {
 }
 
 static bool mqtt_configure_last_will(void) {
+  mqtt_refresh_identity();
   build_status_payload("offline");
 #if SIMCOM_MODEL == a7080
   snprintf(array_at_command, sizeof(array_at_command),
-           "AT+SMCONF=\"WILLTOPIC\",\"%s\"\r\n", MQTT_TOPIC_STATUS);
+           "AT+SMCONF=\"WILLTOPIC\",\"%s\"\r\n", s_topic_status);
   send_to_simcom_a76xx(array_at_command);
   HAL_Delay(300);
   snprintf(array_at_command, sizeof(array_at_command),
@@ -327,12 +365,12 @@ static bool mqtt_configure_last_will(void) {
   return true;
 #else
   snprintf(array_at_command, sizeof(array_at_command),
-           "AT+CMQTTWILLTOPIC=0,%d\r\n", (int)strlen(MQTT_TOPIC_STATUS));
+           "AT+CMQTTWILLTOPIC=0,%d\r\n", (int)strlen(s_topic_status));
   simcom_clear_rx();
   send_to_simcom_a76xx(array_at_command);
   HAL_Delay(500);
   snprintf(array_at_command, sizeof(array_at_command), "%s\r\n",
-           MQTT_TOPIC_STATUS);
+           s_topic_status);
   send_to_simcom_a76xx(array_at_command);
   simcom_wait_for_ok(2000);
   if (!simcom_response_ok()) {
@@ -359,6 +397,7 @@ static bool mqtt_configure_last_will(void) {
 }
 
 bool mobi_mqtt_start(void) {
+  mqtt_refresh_identity();
 #if SIMCOM_MODEL == a7080
   send_to_simcom_a76xx("AT+CNACT=0,1\r\n");
   HAL_Delay(400);
@@ -374,7 +413,7 @@ bool mobi_mqtt_start(void) {
   send_to_simcom_a76xx(array_at_command);
   HAL_Delay(400);
   snprintf(array_at_command, sizeof(array_at_command),
-           "AT+SMCONF=\"CLIENTID\",\"%s\"\r\n", MQTT_CLIENT_ID);
+           "AT+SMCONF=\"CLIENTID\",\"%s\"\r\n", s_mqtt_client_id);
   send_to_simcom_a76xx(array_at_command);
   HAL_Delay(400);
   snprintf(array_at_command, sizeof(array_at_command),
@@ -409,12 +448,13 @@ bool mobi_mqtt_start(void) {
 }
 
 bool mobi_mqtt_acquire_client(void) {
+  mqtt_refresh_identity();
 #if SIMCOM_MODEL == a7080
   return true;
 #else
   simcom_clear_rx();
   snprintf(array_at_command, sizeof(array_at_command),
-           "+CMQTTACCQ: 0,\"%s\",0\r\n", MQTT_CLIENT_ID);
+           "+CMQTTACCQ: 0,\"%s\",0\r\n", s_mqtt_client_id);
   send_to_simcom_a76xx("AT+CMQTTACCQ?\r\n");
   HAL_Delay(800);
   if (simcom_response_has(array_at_command)) {
@@ -422,7 +462,7 @@ bool mobi_mqtt_acquire_client(void) {
   }
 
   snprintf(array_at_command, sizeof(array_at_command),
-           "AT+CMQTTACCQ=0,\"%s\",0\r\n", MQTT_CLIENT_ID);
+           "AT+CMQTTACCQ=0,\"%s\",0\r\n", s_mqtt_client_id);
   simcom_clear_rx();
   send_to_simcom_a76xx(array_at_command);
   simcom_wait_for_ok(3000);
@@ -458,13 +498,14 @@ bool mobi_mqtt_connect(void) {
 }
 
 bool mobi_mqtt_subscribe_server_topics(void) {
-  if (!mqtt_subscribe_raw(MQTT_TOPIC_CONFIG_SET)) {
+  mqtt_refresh_identity();
+  if (!mqtt_subscribe_raw(s_topic_config_set)) {
     return false;
   }
-  if (!mqtt_subscribe_raw(MQTT_TOPIC_CONFIG_GET)) {
+  if (!mqtt_subscribe_raw(s_topic_config_get)) {
     return false;
   }
-  return mqtt_subscribe_raw(MQTT_TOPIC_COMMAND_REQUEST);
+  return mqtt_subscribe_raw(s_topic_command_request);
 }
 
 bool mobi_mqtt_after_subscribe_online(void) {
@@ -476,26 +517,30 @@ bool mobi_mqtt_after_subscribe_online(void) {
 }
 
 bool mobi_mqtt_publish_status_online(void) {
+  mqtt_refresh_identity();
   build_status_payload("online");
-  return mqtt_publish_raw(MQTT_TOPIC_STATUS, array_json, MQTT_QOS,
+  return mqtt_publish_raw(s_topic_status, array_json, MQTT_QOS,
                           MQTT_STATUS_RETAIN);
 }
 
 bool mobi_mqtt_publish_status_offline(void) {
+  mqtt_refresh_identity();
   build_status_payload("offline");
-  return mqtt_publish_raw(MQTT_TOPIC_STATUS, array_json, MQTT_QOS,
+  return mqtt_publish_raw(s_topic_status, array_json, MQTT_QOS,
                           MQTT_STATUS_RETAIN);
 }
 
 bool mobi_mqtt_publish_config_state(void) {
+  mqtt_refresh_identity();
   build_config_state_payload();
-  return mqtt_publish_raw(MQTT_TOPIC_CONFIG_STATE, array_json, MQTT_QOS,
+  return mqtt_publish_raw(s_topic_config_state, array_json, MQTT_QOS,
                           MQTT_CONFIG_STATE_RETAIN);
 }
 
 bool mobi_mqtt_publish_telemetry(void) {
+  mqtt_refresh_identity();
   mobi_mqtt_build_telemetry_json(true);
-  return mqtt_publish_raw(MQTT_TOPIC_TELEMETRY, array_json, MQTT_QOS,
+  return mqtt_publish_raw(s_topic_telemetry, array_json, MQTT_QOS,
                           MQTT_RETAIN);
 }
 
@@ -504,7 +549,9 @@ bool mobi_mqtt_publish_command_response(const char *request_id,
                                         const char *result,
                                         const char *error_code) {
   cJSON *json = cJSON_CreateObject();
-  cJSON_AddStringToObject(json, "request_id", request_id);
+  mqtt_refresh_identity();
+  cJSON_AddStringToObject(json, "request_id",
+                          request_id != NULL ? request_id : "");
   cJSON_AddStringToObject(json, "command", command);
   cJSON_AddStringToObject(json, "result", result);
   if (error_code != NULL) {
@@ -512,7 +559,7 @@ bool mobi_mqtt_publish_command_response(const char *request_id,
   }
   json_to_array(json);
   cJSON_Delete(json);
-  return mqtt_publish_raw(MQTT_TOPIC_COMMAND_RESPONSE, array_json, MQTT_QOS,
+  return mqtt_publish_raw(s_topic_command_response, array_json, MQTT_QOS,
                           MQTT_RETAIN);
 }
 
@@ -521,6 +568,7 @@ bool mobi_mqtt_publish_config_response(const char *request_id,
                                        const char *error_code,
                                        const char *message) {
   cJSON *json = cJSON_CreateObject();
+  mqtt_refresh_identity();
   cJSON_AddStringToObject(json, "request_id", request_id);
   cJSON_AddStringToObject(json, "result", result);
   if (error_code != NULL) {
@@ -531,7 +579,7 @@ bool mobi_mqtt_publish_config_response(const char *request_id,
   }
   json_to_array(json);
   cJSON_Delete(json);
-  return mqtt_publish_raw(MQTT_TOPIC_CONFIG_RESPONSE, array_json, MQTT_QOS,
+  return mqtt_publish_raw(s_topic_config_response, array_json, MQTT_QOS,
                           MQTT_RETAIN);
 }
 

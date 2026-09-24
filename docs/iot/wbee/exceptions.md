@@ -14,6 +14,11 @@
 | MQTT publish lỗi | Không nhận URC thành công | Retry rồi reconnect | `Publish fail` |
 | SIM chưa đăng ký mạng | Thiếu trạng thái registration | Retry/reset theo ngưỡng | Không vào MQTT |
 | Payload không hỗ trợ | Không khớp parser | Bỏ qua | Chưa có response chuẩn |
+| ACK OTA publish lỗi | Thử tối đa 3 lần | Log lỗi rồi vẫn chạy OTA | Server có thể gửi lại command |
+| Serial mới sai định dạng | Validation 3..23 ký tự | Không ghi Flash | `rejected/INVALID_SERIAL_NUMBER` |
+| ACK đổi serial thất bại | Publish lỗi sau 3 lần | Giữ serial cũ, không reboot | Server có thể retry |
+| Ghi serial vào Flash lỗi | Erase/program/verify lỗi | Giữ serial runtime cũ | `failed/FLASH_WRITE_FAILED` |
+| Mất nguồn sau khi ghi serial | Blob có CRC hợp lệ | Boot dùng serial mới | Server cần theo dõi topic mới |
 | Manifest HTTP lỗi | Status/length lỗi | Thử URL fallback | OTA failed |
 | Manifest sai device/address/size | Validation lỗi | Từ chối | `manifest ... invalid` |
 | BIN sai Content-Length | HTTP length khác `size` | Dừng OTA | `binary length mismatch` |

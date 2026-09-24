@@ -79,6 +79,7 @@ sequenceDiagram
     participant Boot as Bootloader
 
     Server->>App: MQTT payload chứa ota_update
+    App->>Server: command/response result=received
     App->>GitHub: GET manifest.json
     App->>App: Validate device, version, address, size
     App->>GitHub: GET BIN theo từng chunk
@@ -95,3 +96,25 @@ sequenceDiagram
 
 Nếu manifest không mới hơn, application tiếp tục chạy. Bootloader hiện không có rollback image thứ hai.
 
+## Đổi serial number
+
+```mermaid
+sequenceDiagram
+    participant Server
+    participant Old as Device topic serial cũ
+    participant Flash
+    participant New as Device topic serial mới
+
+    Server->>Old: set_serial_number + request_id
+    Old->>Old: Validate serial mới
+    Old->>Server: result=received
+    Old->>Flash: Erase/program/verify config page
+    Flash-->>Old: Save OK
+    Old->>Server: result=success
+    Old->>Old: NVIC_SystemReset
+    New->>Server: status online + telemetry
+```
+
+Nếu ACK `received` không gửi được sau ba lần, serial không được ghi. Khi ghi
+thành công, serial cũ vẫn được dùng để gửi `success`; serial mới chỉ có hiệu lực
+sau reboot.

@@ -5,6 +5,7 @@
  *      Author: thuanphat
  */
 #include "cJSON.h"
+#include "cfg_store.h"
 #include "config.h"
 #include "main.h"
 #include "stdbool.h"
@@ -24,7 +25,7 @@ char rx_buffer_ph[20];
 char rx_buffer_do[100];
 char rx_buffer_fuvitech[100];
 char data_status_pump[50]="{\"deviceID\":\"%s\",\"1\":%d,\"2\":%d,\"3\":%d}\r\n";
-char tx5_status_pump[50];
+char tx5_status_pump[96];
 int temp_cycle=duty_cycles_ph;
 
 uint8_t payLoadPin;
@@ -35,6 +36,56 @@ uint8_t payLoadPin;
  volatile uint16_t g_rx_len  = 0;
  volatile uint8_t  g_rx_flag = 0;      // cờ báo có dữ liệu mới
  char g_rx_line[RX_LINE_MAX];          // chuỗi nhận được (null-terminated)
+
+static bool copy_json_string_value(const char *json, const char *key,
+                                   char *out, size_t out_size) {
+  char pattern[32];
+  const char *value;
+  size_t length = 0U;
+
+  if (json == NULL || key == NULL || out == NULL || out_size == 0U) {
+    return false;
+  }
+  out[0] = '\0';
+  if (snprintf(pattern, sizeof(pattern), "\"%s\"", key) >=
+      (int)sizeof(pattern)) {
+    return false;
+  }
+
+  value = strstr(json, pattern);
+  if (value == NULL) {
+    return false;
+  }
+  value += strlen(pattern);
+  while (*value == ' ' || *value == '\t') {
+    value++;
+  }
+  if (*value++ != ':') {
+    return false;
+  }
+  while (*value == ' ' || *value == '\t') {
+    value++;
+  }
+  if (*value++ != '"') {
+    return false;
+  }
+
+  while (value[length] != '\0' && value[length] != '"' &&
+         value[length] != '\r' && value[length] != '\n') {
+    if (value[length] == '\\' || length >= (out_size - 1U)) {
+      out[0] = '\0';
+      return false;
+    }
+    out[length] = value[length];
+    length++;
+  }
+  if (value[length] != '"') {
+    out[0] = '\0';
+    return false;
+  }
+  out[length] = '\0';
+  return true;
+}
 
 void uart5_rx_start_to_idle(void)
 {
@@ -49,6 +100,8 @@ void uart5_rx_start_to_idle(void)
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
   if (huart->Instance == USART1) {
     uint16_t text_size = Size;
+    const char *serial_number = device_serial_get();
+    size_t serial_length = strlen(serial_number);
 
     ota_uart_rx_capture((const uint8_t *)rx_buffer, Size);
     if (text_size >= sizeof(rx_buffer)) {
@@ -61,8 +114,10 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
 
 #if INTERVAL_PUPLISH_DATA < 60
     for (int i = 0; i < (int)text_size - 31; i++) {
-    if ((char)rx_buffer[i] == (char)SERIAL_NUMBER[5] && (char)rx_buffer[i + 1] == (char)SERIAL_NUMBER[6] &&
-        (char)rx_buffer[i + 2] == (char)SERIAL_NUMBER[7]) {
+    if (serial_length >= 3U &&
+        (char)rx_buffer[i] == serial_number[serial_length - 3U] &&
+        (char)rx_buffer[i + 1] == serial_number[serial_length - 2U] &&
+        (char)rx_buffer[i + 2] == serial_number[serial_length - 1U]) {
       payLoadPin = (rx_buffer[i + 4] - 48);
 #if SIMCOM_MODEL == a7672s
       if (rx_buffer[(i + 29)] == 49 && is_pb_done == true)
@@ -97,7 +152,8 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
         	__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1, duty_cycles_x);
         	motor_x=1;
         }
-        sprintf(tx5_status_pump,data_status_pump,SERIAL_NUMBER,motor_ph_plus,motor_ph_minus,motor_x);
+        snprintf(tx5_status_pump, sizeof(tx5_status_pump), data_status_pump,
+                 device_serial_get(), motor_ph_plus, motor_ph_minus, motor_x);
         is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
       }
 
@@ -124,7 +180,8 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
         	HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
         	motor_x=0;
         }
-        sprintf(tx5_status_pump,data_status_pump,SERIAL_NUMBER,motor_ph_plus,motor_ph_minus,motor_x);
+        snprintf(tx5_status_pump, sizeof(tx5_status_pump), data_status_pump,
+                 device_serial_get(), motor_ph_plus, motor_ph_minus, motor_x);
         is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
       }
 
@@ -135,9 +192,28 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
       printf("--------------Client Disconnect passively!---------------\n");
       current_status_simcom = On;
     }
-    if (((strstr((char *)rx_buffer, "ota_check") != NULL) ||
-         (strstr((char *)rx_buffer, "ota_update") != NULL)) &&
+    if (strstr((char *)rx_buffer, "set_serial_number") != NULL &&
         is_pb_done == true) {
+      copy_json_string_value((char *)rx_buffer, "request_id",
+                             serial_request_id,
+                             sizeof(serial_request_id));
+      copy_json_string_value((char *)rx_buffer, "serial_number",
+                             requested_serial_number,
+                             sizeof(requested_serial_number));
+      printf("----------Set serial number request received----------\r\n");
+      to_change_serial_number = true;
+    }
+    const char *ota_command = NULL;
+    if (strstr((char *)rx_buffer, "ota_update") != NULL) {
+      ota_command = "ota_update";
+    } else if (strstr((char *)rx_buffer, "ota_check") != NULL) {
+      ota_command = "ota_check";
+    }
+    if (ota_command != NULL && is_pb_done == true) {
+      snprintf(ota_request_command, sizeof(ota_request_command), "%s",
+               ota_command);
+      copy_json_string_value((char *)rx_buffer, "request_id", ota_request_id,
+                             sizeof(ota_request_id));
       printf("--------------OTA request received---------------\r\n");
       to_start_ota = true;
     }

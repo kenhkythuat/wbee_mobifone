@@ -13,7 +13,7 @@
 
 // Codename of the farm, where we deploy this node to.
 
-#define VERSION_WBEE "3.4"
+#define VERSION_WBEE "3.5"
 
 #define OTA_ENABLE 1
 #define OTA_MANIFEST_URL "https://raw.githubusercontent.com/kenhkythuat/wbee_mobifone/feature/ota_mobifone/ota/manifest.json"
@@ -33,7 +33,8 @@
 #define SAVE_LOAD false
 #define INTERVAL_PUPLISH_DATA 15 // the time the device sends data to the server, If the sending time is over 60 seconds, the sensor will go into deep sleep.
 
-// Serial number. Must be lower case.
+// Factory/default serial. A valid value stored in Flash overrides this at boot.
+// Runtime serials must use lower-case letters, digits, '-' or '_'.
 #ifndef SERIAL_NUMBER
   #define SERIAL_NUMBER "wb000002"
 #endif
@@ -99,21 +100,12 @@
 #define MQTT_USER "admin"       // User - connect to MQTT broker
 #define MQTT_PASS "admin123"		// Password - connect to MQTT broker
 
-#define MQTT_TOPIC_TELEMETRY FARM "/" SERIAL_NUMBER "/telemetry"
-#define MQTT_TOPIC_STATUS FARM "/" SERIAL_NUMBER "/status"
-#define MQTT_TOPIC_CONFIG_SET FARM "/" SERIAL_NUMBER "/config/set"
-#define MQTT_TOPIC_CONFIG_GET FARM "/" SERIAL_NUMBER "/config/get"
-#define MQTT_TOPIC_CONFIG_STATE FARM "/" SERIAL_NUMBER "/config/state"
-#define MQTT_TOPIC_CONFIG_RESPONSE FARM "/" SERIAL_NUMBER "/config/response"
-#define MQTT_TOPIC_COMMAND_REQUEST FARM "/" SERIAL_NUMBER "/command/request"
-#define MQTT_TOPIC_COMMAND_RESPONSE FARM "/" SERIAL_NUMBER "/command/response"
 /** MQTT
  * Mobi water monitoring broker.
  */
 #define MQTT_BROKER_HOST "42.1.65.167"             // MQTT broker host/IP without scheme
 #define MQTT_HOST "tcp://" MQTT_BROKER_HOST        // MQTT broker URL for CMQTTCONNECT
 
-#define MQTT_CLIENT_ID  "mobi-" SERIAL_NUMBER
 #define MQTT_PORT 1883
 #define MQTT_KEEPALIVE_SEC 60
 #define MQTT_QOS 0

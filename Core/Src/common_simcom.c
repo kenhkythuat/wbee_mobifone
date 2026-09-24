@@ -53,7 +53,12 @@ bool is_at_rel_mqtt = false;
 bool is_at_stop_mqtt = false;
 bool is_inital_check = false;
 bool to_send_status_to_server = false;
-bool to_start_ota = false;
+volatile bool to_start_ota = false;
+char ota_request_id[MQTT_REQUEST_ID_MAX_LEN];
+char ota_request_command[MQTT_COMMAND_MAX_LEN];
+volatile bool to_change_serial_number = false;
+char serial_request_id[MQTT_REQUEST_ID_MAX_LEN];
+char requested_serial_number[DEVICE_SERIAL_MAX_LEN];
 //volatile bool control_mode;
 
 uint16_t count_errors = 0;

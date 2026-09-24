@@ -27,6 +27,7 @@
 #include "ph_pump_scheduler.h"
 #include "plc_rs485.h"
 #include "ota_update.h"
+#include "mobi_mqtt.h"
 #include "stdbool.h"
 #include "stdio.h"
 #include "stdlib.h"
@@ -124,6 +125,22 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     // NOTE: dòng này thường KHÔNG cần gọi trong callback (timer tự chạy)
     // HAL_TIM_Base_Start_IT(&htim6);
   }
+}
+
+static bool publish_command_response_with_retry(const char *request_id,
+                                                const char *command,
+                                                const char *result,
+                                                const char *error_code) {
+  for (uint8_t attempt = 0U; attempt < 3U; attempt++) {
+    IWDG->KR = 0xAAAA;
+    if (mobi_mqtt_publish_command_response(request_id, command, result,
+                                           error_code)) {
+      return true;
+    }
+    printf("[MQTT] command response retry %u/3\r\n",
+           (unsigned int)(attempt + 1U));
+  }
+  return false;
 }
 
 void process_uart_rx(void) {
@@ -232,16 +249,18 @@ int main(void) {
   HAL_Delay(500);
   plc_rs485_init();
   ota_init();
-  sprintf(tx5_status_pump, data_status_pump, SERIAL_NUMBER, motor_ph_plus, motor_ph_minus, motor_x);
-  is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
   cfg_load_from_flash();
+  snprintf(tx5_status_pump, sizeof(tx5_status_pump), data_status_pump,
+           device_serial_get(), motor_ph_plus, motor_ph_minus, motor_x);
+  is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
 #if SENSOR_DATA_SOURCE == SENSOR_SOURCE_DIRECT
   read_sensor();
 #endif
   create_JSON_LCD();
   HAL_Delay(200);
   is_publish_data_lcd = update_data_to_sreen((uint8_t *)array_json);
-  sprintf(tx5_status_pump, data_status_pump, SERIAL_NUMBER, motor_ph_plus, motor_ph_minus, motor_x);
+  snprintf(tx5_status_pump, sizeof(tx5_status_pump), data_status_pump,
+           device_serial_get(), motor_ph_plus, motor_ph_minus, motor_x);
   HAL_Delay(700);
   is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
   ph_pump_isr_init(&ph_sm_isr);
@@ -256,9 +275,56 @@ int main(void) {
 
     /* USER CODE BEGIN 3 */
     check_handle_state(current_status_simcom);
+    if (to_change_serial_number && current_status_simcom == Subscribed) {
+      char request_id[MQTT_REQUEST_ID_MAX_LEN];
+      char new_serial[DEVICE_SERIAL_MAX_LEN];
+
+      __disable_irq();
+      to_change_serial_number = false;
+      snprintf(request_id, sizeof(request_id), "%s", serial_request_id);
+      snprintf(new_serial, sizeof(new_serial), "%s",
+               requested_serial_number);
+      __enable_irq();
+
+      if (!device_serial_is_valid(new_serial)) {
+        printf("[SERIAL] rejected invalid value: %s\r\n", new_serial);
+        publish_command_response_with_retry(request_id, "set_serial_number",
+                                            "rejected",
+                                            "INVALID_SERIAL_NUMBER");
+      } else if (!publish_command_response_with_retry(
+                     request_id, "set_serial_number", "received", NULL)) {
+        printf("[SERIAL] ACK failed; serial unchanged\r\n");
+      } else if (!device_serial_save(new_serial)) {
+        printf("[SERIAL] Flash save failed\r\n");
+        publish_command_response_with_retry(request_id, "set_serial_number",
+                                            "failed", "FLASH_WRITE_FAILED");
+      } else {
+        printf("[SERIAL] saved new value=%s\r\n", new_serial);
+        publish_command_response_with_retry(request_id, "set_serial_number",
+                                            "success", NULL);
+        printf("[SERIAL] reboot with new serial number\r\n");
+        HAL_Delay(500);
+        NVIC_SystemReset();
+      }
+    }
     if (to_start_ota && current_status_simcom == Subscribed) {
+      char request_id[MQTT_REQUEST_ID_MAX_LEN];
+      char command[MQTT_COMMAND_MAX_LEN];
       ota_result_t ota_result;
+
+      __disable_irq();
       to_start_ota = false;
+      snprintf(request_id, sizeof(request_id), "%s", ota_request_id);
+      snprintf(command, sizeof(command), "%s", ota_request_command);
+      __enable_irq();
+
+      if (publish_command_response_with_retry(request_id, command,
+                                              "received", NULL)) {
+        printf("[OTA] command ACK sent\r\n");
+      } else {
+        printf("[OTA] command ACK failed; continue OTA\r\n");
+      }
+
       printf("Start OTA check\r\n");
       ota_result = ota_check_and_download();
       if (ota_result == OTA_RESULT_OK) {
@@ -282,9 +348,6 @@ int main(void) {
       create_JSON_LCD();
       HAL_Delay(200);
       is_publish_data_lcd = update_data_to_sreen((uint8_t *)array_json);
-//      sprintf(tx5_status_pump, data_status_pump, SERIAL_NUMBER, motor_ph_plus, motor_ph_minus, motor_x);
-//      HAL_Delay(700);
-//      is_publish_data_lcd = update_data_to_sreen((uint8_t *)tx5_status_pump);
       lcd_update_counter_1hz = 0;
     }
     // process_uart_rx();

@@ -72,7 +72,7 @@ Cấu hình tập trung tại `Core/Inc/config.h`:
 Trước khi build cho thiết bị mới, cần kiểm tra:
 
 1. `VERSION_WBEE` đúng với firmware chuẩn bị phát hành.
-2. `SERIAL_NUMBER` là duy nhất và viết thường.
+2. `SERIAL_NUMBER` là serial mặc định khi Flash chưa có cấu hình runtime.
 3. Broker, tài khoản MQTT và `FARM` đúng môi trường triển khai.
 4. `SENSOR_DATA_SOURCE` đúng nguồn dữ liệu thực tế.
 5. Linker script của application là `STM32F103RETX_OTA_APP.ld`.
@@ -148,7 +148,7 @@ Với `FARM=mobi/water` và `SERIAL_NUMBER=wb000002`, các topic là:
 | `mobi/water/wb000002/telemetry` | Device -> Server | 0 | 0 | Dữ liệu cảm biến định kỳ |
 | `mobi/water/wb000002/config/state` | Device -> Server | 0 | 1 | Chu kỳ cấu hình hiện tại |
 | `mobi/water/wb000002/config/response` | Device -> Server | 0 | 0 | API response đã có, chưa được gọi trong luồng hiện tại |
-| `mobi/water/wb000002/command/response` | Device -> Server | 0 | 0 | API response đã có, chưa được gọi trong luồng hiện tại |
+| `mobi/water/wb000002/command/response` | Device -> Server | 0 | 0 | ACK lệnh OTA và phản hồi command |
 | `mobi/water/wb000002/config/set` | Server -> Device | 0 | - | Đã subscribe; chưa có parser cấu hình MQTT hoàn chỉnh |
 | `mobi/water/wb000002/config/get` | Server -> Device | 0 | - | Đã subscribe; chưa có handler phản hồi hoàn chỉnh |
 | `mobi/water/wb000002/command/request` | Server -> Device | 0 | - | Lệnh điều khiển và kích hoạt OTA |
@@ -198,6 +198,65 @@ Config state:
 {"device_id":"wb000002","telemetry_interval_s":15,"sensor_sample_interval_s":10}
 ```
 
+## Đổi serial number từ server
+
+Server gửi command đến topic đang dùng của thiết bị:
+
+```text
+mobi/water/<SERIAL_NUMBER_CU>/command/request
+```
+
+Payload:
+
+```json
+{
+  "request_id": "req-serial-001",
+  "command": "set_serial_number",
+  "serial_number": "wb000003"
+}
+```
+
+Serial hợp lệ phải dài từ 3 đến 23 ký tự và chỉ gồm chữ thường `a-z`, số
+`0-9`, dấu `-` hoặc `_`.
+
+Luồng xử lý:
+
+1. Thiết bị kiểm tra serial mới.
+2. Thiết bị ACK trên topic serial cũ:
+
+```json
+{"request_id":"req-serial-001","command":"set_serial_number","result":"received"}
+```
+
+3. Nếu ACK thành công, thiết bị ghi serial mới cùng CRC vào Flash config tại
+   `0x0807F800`.
+4. Thiết bị phản hồi kết quả trên topic serial cũ:
+
+```json
+{"request_id":"req-serial-001","command":"set_serial_number","result":"success"}
+```
+
+5. STM32 reset, đọc serial mới từ Flash và kết nối lại với:
+
+```text
+Client ID: mobi-wb000003
+Topic:     mobi/water/wb000003/...
+```
+
+Nếu serial không hợp lệ, thiết bị không ghi Flash và phản hồi:
+
+```json
+{"request_id":"req-serial-001","command":"set_serial_number","result":"rejected","error_code":"INVALID_SERIAL_NUMBER"}
+```
+
+Nếu ghi Flash lỗi, `result` là `failed` với `error_code` bằng
+`FLASH_WRITE_FAILED`. Nếu không gửi được ACK `received` sau ba lần thử, thiết
+bị giữ nguyên serial cũ và không reboot.
+
+`SERIAL_NUMBER` trong `config.h` chỉ còn là giá trị nhà máy/fallback. Serial lưu
+trong Flash được ưu tiên và vẫn được giữ qua các lần OTA vì bootloader không xóa
+trang config.
+
 ## Màn hình UART5
 
 Cứ khoảng 6 giây, firmware tạo cùng cấu trúc JSON telemetry và gửi qua UART5. Hàm gửi tự bổ sung `\r\n` nếu payload chưa có kết thúc dòng.
@@ -222,6 +281,16 @@ ota_update
 ```
 
 Hai chuỗi hiện có cùng hành vi: nếu manifest có phiên bản lớn hơn `VERSION_WBEE`, thiết bị tải và chuẩn bị cài firmware.
+
+Trước khi bắt đầu HTTP OTA, thiết bị publish ACK lên
+`mobi/water/<SERIAL_NUMBER>/command/response`:
+
+```json
+{"request_id":"req-123","command":"ota_update","result":"received"}
+```
+
+Nếu request không có `request_id`, trường này được gửi dưới dạng chuỗi rỗng. ACK
+được thử tối đa ba lần; OTA vẫn tiếp tục nếu cả ba lần publish thất bại.
 
 ### Manifest
 
@@ -321,6 +390,7 @@ Tham số `--version` chỉ đặt tên file và ghi manifest; nó không thay �
 |---|---|
 | `Core/Src/main.c` | Khởi tạo phần cứng, timer và vòng lặp chính |
 | `Core/Src/common_simcom.c` | State machine SIMCOM và điều phối publish |
+| `Core/Src/cfg_store.c` | Lưu cấu hình bơm và serial runtime vào Flash |
 | `Core/Src/mobi_mqtt.c` | MQTT topic, JSON và AT command MQTT |
 | `Core/Src/plc_rs485.c` | Decode Modbus ASCII, LRC, mapping register và timeout |
 | `Core/Src/convert_data_uart.c` | Callback UART, dữ liệu SIMCOM, PLC, LCD và trigger OTA |

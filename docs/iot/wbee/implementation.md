@@ -16,7 +16,7 @@ Mẫu topic là `<FARM>/<SERIAL_NUMBER>/<suffix>`.
 | `telemetry` | Device -> Server | 0 | 0 | Đang dùng định kỳ |
 | `config/state` | Device -> Server | 0 | 1 | Publish sau khi subscribe |
 | `config/response` | Device -> Server | 0 | 0 | Có API, chưa được gọi trong luồng hiện tại |
-| `command/response` | Device -> Server | 0 | 0 | Có API, chưa được gọi trong luồng hiện tại |
+| `command/response` | Device -> Server | 0 | 0 | ACK lệnh OTA và phản hồi command |
 | `config/set` | Server -> Device | 0 | - | Đã subscribe, chưa có parser hoàn chỉnh |
 | `config/get` | Server -> Device | 0 | - | Đã subscribe, chưa có handler hoàn chỉnh |
 | `command/request` | Server -> Device | 0 | - | Lệnh điều khiển và trigger OTA |
@@ -98,6 +98,47 @@ Ví dụ hợp lệ:
 {"command":"ota_update"}
 ```
 
+Payload có `request_id` được khuyến nghị để server đối chiếu ACK:
+
+```json
+{"request_id":"req-123","command":"ota_update"}
+```
+
+Thiết bị phản hồi trước khi download firmware:
+
+```json
+{"request_id":"req-123","command":"ota_update","result":"received"}
+```
+
+Nếu không có `request_id`, ACK vẫn được gửi với `request_id` là chuỗi rỗng.
+
+## Set serial number command
+
+Request được gửi đến topic `command/request` của serial hiện tại:
+
+```json
+{"request_id":"req-serial-001","command":"set_serial_number","serial_number":"wb000003"}
+```
+
+ACK trước khi ghi Flash:
+
+```json
+{"request_id":"req-serial-001","command":"set_serial_number","result":"received"}
+```
+
+Kết quả sau khi ghi và verify Flash:
+
+```json
+{"request_id":"req-serial-001","command":"set_serial_number","result":"success"}
+```
+
+Cả hai response được publish trên `command/response` của serial cũ. Sau đó MCU
+reset và dùng serial mới cho `device_id`, MQTT client ID và tất cả topic.
+
+Validation: dài 3..23 ký tự, chỉ gồm `a-z`, `0-9`, `-`, `_`. Request sai nhận
+`result=rejected`, `error_code=INVALID_SERIAL_NUMBER`. Lỗi ghi Flash nhận
+`result=failed`, `error_code=FLASH_WRITE_FAILED`.
+
 ## OTA manifest
 
 | Field | Quy tắc |
@@ -116,10 +157,10 @@ Ví dụ hợp lệ:
 - MQTT telemetry gọi lại `AT+CSQ`; JSON LCD sử dụng RSSI cache gần nhất.
 - Sau nhiều lần publish thất bại, state machine ngắt MQTT và quay lại kiểm tra mạng.
 - OTA chỉ bắt đầu khi modem đang ở trạng thái `Subscribed`.
+- Serial runtime trong Flash được ưu tiên hơn `SERIAL_NUMBER` compile-time.
 
 ## Giả định
 
 - Một frame PLC hoàn chỉnh nằm trong một callback UART Receive-to-Idle.
 - Server hiểu các trường bitfield là chỉ số bit, không phải giá trị raw register.
 - Firmware không kiểm tra miền hợp lệ vật lý của từng cảm biến.
-

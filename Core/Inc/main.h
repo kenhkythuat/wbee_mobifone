@@ -39,6 +39,9 @@ extern "C" {
 /* USER CODE BEGIN ET */
 #define RX_IDLE_BUF_SZ   128
 #define RX_LINE_MAX      256
+#define MQTT_REQUEST_ID_MAX_LEN 48
+#define MQTT_COMMAND_MAX_LEN    16
+#define DEVICE_SERIAL_MAX_LEN   24
 
 #define OFFLINE      0
 #define ONLINE      1
@@ -96,7 +99,7 @@ extern char rx_buffer_ec[20];
 extern char rx_buffer_ph[20];
 extern char rx_buffer_do[100];;
 extern char rx_buffer_fuvitech[100];
-extern char tx5_status_pump[50];
+extern char tx5_status_pump[96];
 extern char data_status_pump[50];
 extern float data_ph_fuvitech;
 extern uint16_t adc_pin_valve;
@@ -106,7 +109,12 @@ extern bool to_send_status_to_server;
 extern volatile uint32_t g_control_mode;
 //extern volatile bool control_mode;
 extern uint8_t total_errors;
-extern bool to_start_ota;
+extern volatile bool to_start_ota;
+extern char ota_request_id[MQTT_REQUEST_ID_MAX_LEN];
+extern char ota_request_command[MQTT_COMMAND_MAX_LEN];
+extern volatile bool to_change_serial_number;
+extern char serial_request_id[MQTT_REQUEST_ID_MAX_LEN];
+extern char requested_serial_number[DEVICE_SERIAL_MAX_LEN];
 // data EC Fuvitech
 extern float data_measured_ph_fuvitech;
 extern float data_temperature_ph_fuvitech;
