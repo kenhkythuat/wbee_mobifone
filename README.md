@@ -1,314 +1,346 @@
-# WBEE STM32F103RET6 Firmware
+# WBEE MobiFone Firmware
 
-Firmware WBEE cho STM32F103RETx, dùng modem SIMCOM để kết nối MQTT, đọc cảm biến, publish dữ liệu lên server Agriconnect và điều khiển bơm/relay qua lệnh MQTT nhận từ UART1.
+Firmware cho thiết bị giám sát nước dùng `STM32F103RET6`, modem `SIMCOM A7680`, PLC qua `RS485/Modbus ASCII`, màn hình qua UART và MQTT để trao đổi dữ liệu với server.
 
-## 1. Thông tin project
+Nhánh này có hỗ trợ OTA qua GitHub. Application được liên kết tại `0x08008000` và chạy phía sau bootloader 32 KiB.
 
-- MCU: `STM32F103RETx`
-- IDE khuyến nghị: STM32CubeIDE
-- Toolchain: GNU Tools for STM32 `13.3.rel1`
-- Debug/build profile: `Debug`
-- Linker script: `STM32F103RETX_FLASH.ld`
-- File cấu hình chính: `Core/Inc/config.h`
-- File bật/tắt lịch bơm tự động: `Core/Inc/main.h`
+## Chức năng chính
 
-## 2. Cấu trúc thư mục
+- Nhận dữ liệu PLC thụ động qua `USART2`, không gửi lệnh yêu cầu PLC.
+- Kiểm tra địa chỉ, function code, cấu trúc frame và LRC trước khi nhận dữ liệu.
+- Giữ giá trị PLC gần nhất; chỉ chuyển các trường telemetry về `null` khi quá thời gian không nhận được frame hợp lệ.
+- Kết nối MQTT qua SIMCOM, publish trạng thái, cấu hình và telemetry.
+- Gửi JSON telemetry sang màn hình qua `UART5`.
+- Nhận yêu cầu OTA từ MQTT, tải manifest và firmware từ GitHub, kiểm tra CRC32 rồi giao cho bootloader cài đặt.
+- Vẫn giữ chế độ đọc cảm biến trực tiếp để có thể chọn bằng `SENSOR_DATA_SOURCE`.
+
+## Luồng tổng thể
+
+```mermaid
+flowchart LR
+    PLC[PLC] -->|Modbus ASCII / RS485| U2[USART2]
+    U2 --> PARSE[Giải mã + kiểm tra LRC]
+    PARSE --> CACHE[Bộ dữ liệu PLC gần nhất]
+    CACHE --> JSON[JSON telemetry]
+    JSON -->|UART5 + CRLF| LCD[Màn hình]
+    JSON -->|MQTT qua USART1| SIM[SIMCOM A7680]
+    SIM --> BROKER[MQTT broker]
+    BROKER -->|command/request| SIM
+    SIM -->|ota_check hoặc ota_update| OTA[OTA downloader]
+    OTA -->|HTTPS| GITHUB[GitHub raw]
+    OTA --> STAGING[Flash staging]
+    STAGING --> BOOT[Bootloader]
+    BOOT --> APP[Application mới]
+```
+
+Khi khởi động, firmware đi qua các trạng thái:
 
 ```text
-Core/
-  Inc/              Header và file cấu hình firmware
-  Src/              Source code ứng dụng
-  Startup/          Startup file STM32
-Drivers/           HAL driver và CMSIS
-Debug/             Makefile/build output của STM32CubeIDE
-STM32F103RETX_FLASH.ld
-wbee_stm32f103ret6.ioc
+Off -> On -> InternetReady -> MqttReady -> Subscribed
 ```
 
-Các file quan trọng:
+Sau khi subscribe thành công, thiết bị publish lần lượt `status=online`, `config/state` và một bản telemetry. TIM6 tạo nhịp 1 giây; khi đủ chu kỳ cấu hình, vòng lặp chính publish telemetry mới.
 
-- `Core/Inc/config.h`: cấu hình serial, model SIMCOM, MQTT, sensor, thời gian publish.
-- `Core/Inc/main.h`: khai báo global, define mode, bật/tắt lịch bơm tự động.
-- `Core/Src/convert_data_uart.c`: xử lý UART1 từ SIMCOM/MQTT và điều khiển motor.
-- `Core/Src/common_simcom.c`: kết nối SIMCOM, MQTT, publish data/status.
-- `Core/Src/main.c`: khởi tạo peripheral, vòng lặp chính, timer callback.
-- `Core/Src/ph_pump_isr.c`: logic lịch bơm pH tự động, hiện đang được ẩn bằng define.
+## Phần cứng và UART
 
-## 3. Chuẩn bị môi trường
+| Cổng | Cấu hình hiện tại | Chức năng |
+|---|---|---|
+| `USART1` | 115200, 8N1 | AT command, HTTP, MQTT với SIMCOM |
+| `USART2` | 9600, 8E1 | Nhận Modbus ASCII từ PLC |
+| `UART4` | 9600, 8N1 | Cảm biến trực tiếp khi chọn chế độ tương ứng |
+| `UART5` | 9600, 8N1 | Gửi JSON sang màn hình và nhận cấu hình cục bộ |
 
-Cài đặt:
+Log `printf()` hiện được chuyển qua ITM/SWO trong `_write()`.
 
-1. STM32CubeIDE.
-2. ST-LINK driver.
-3. Board STM32F103RETx và ST-LINK/V2 hoặc debugger tương thích.
-4. Modem SIMCOM đúng model cấu hình trong `config.h`.
+## Cấu hình quan trọng
 
-Sau khi cài STM32CubeIDE, import project bằng:
-
-```text
-File -> Import -> Existing Projects into Workspace -> chọn thư mục wbee
-```
-
-## 4. Cấu hình firmware
-
-Mở `Core/Inc/config.h` và kiểm tra các define sau trước khi build.
-
-### 4.1. Phiên bản firmware
+Cấu hình tập trung tại `Core/Inc/config.h`:
 
 ```c
-#define VERSION_WBEE "2.1"
-```
-
-### 4.2. Model SIMCOM
-
-Chọn đúng modem đang dùng:
-
-```c
-#define a7672s 1
-#define a7670c 2
-#define a7670sa 3
-#define a7080 4
-#define a7680 5
-
+#define VERSION_WBEE "..."
+#define SERIAL_NUMBER "wb000002"
 #define SIMCOM_MODEL a7680
-```
 
-Ví dụ dùng A7670C:
+#define SENSOR_SOURCE_DIRECT 0
+#define SENSOR_SOURCE_PLC_RS485 1
+#define SENSOR_DATA_SOURCE SENSOR_SOURCE_PLC_RS485
 
-```c
-#define SIMCOM_MODEL a7670c
-```
-
-### 4.3. Serial number thiết bị
-
-Serial phải viết thường:
-
-```c
-#define SERIAL_NUMBER "wb000001"
-```
-
-Serial này được dùng để tạo MQTT client ID và topic.
-
-### 4.4. Chu kỳ publish dữ liệu
-
-```c
+#define PLC_RS485_TIMEOUT_SEC 300
 #define INTERVAL_PUPLISH_DATA 15
 ```
 
-Đơn vị: giây.
+Trước khi build cho thiết bị mới, cần kiểm tra:
 
-Lưu ý: nếu cấu hình từ `60` giây trở lên, firmware có nhánh đưa thiết bị vào sleep sau khi publish.
+1. `VERSION_WBEE` đúng với firmware chuẩn bị phát hành.
+2. `SERIAL_NUMBER` là duy nhất và viết thường.
+3. Broker, tài khoản MQTT và `FARM` đúng môi trường triển khai.
+4. `SENSOR_DATA_SOURCE` đúng nguồn dữ liệu thực tế.
+5. Linker script của application là `STM32F103RETX_OTA_APP.ld`.
 
-### 4.5. Chọn loại cảm biến
+Không đưa mật khẩu MQTT thật vào repository công khai. Firmware hiện dùng MQTT TCP cổng `1883`, chưa mã hóa TLS.
 
-```c
-#define ph_fuvitech false
-#define ec_fuvitech false
-#define do_fuvitech false
+## Dữ liệu PLC RS485
 
-#define ph_rika500_12 true
-#define ec_rika500_13 true
-#define do_rika500_04 true
+### Định dạng truyền
+
+PLC gửi **Modbus ASCII**, tức là chuỗi ký tự hex, bắt đầu bằng `:` và thường kết thúc bằng byte `CR LF`:
+
+```text
+:021000000008100046002D000B03E8004D0004000200100A\r\n
 ```
 
-Đặt `true` cho loại cảm biến đang dùng, `false` cho loại không dùng.
+`CR LF` phải là hai byte `0x0D 0x0A`, không phải chữ `#CR#LF`. Code cũng chấp nhận frame không có dấu `:` hoặc không có `CR LF` nếu toàn bộ frame nằm trong một lần nhận UART.
 
-### 4.6. Duty cycle motor mặc định
+LRC hợp lệ khi tổng modulo 256 của tất cả byte từ địa chỉ đến byte LRC bằng `0x00`. Frame sai LRC bị loại và không reset timeout PLC.
 
-```c
-#define duty_cycles_ph 50
-#define duty_cycles_ec 50
-#define duty_cycles_x 50
+### Ánh xạ thanh ghi
+
+| Địa chỉ | Telemetry key | Quy đổi hiện tại |
+|---:|---|---|
+| `0x0000` | `ph1` | raw / 10 |
+| `0x0001` | `ph2` | raw / 10 |
+| `0x0002` | `do` | raw |
+| `0x0003` | `ozone` | raw |
+| `0x0004` | `pressure_o2` | raw |
+| `0x0005` | `input_x` | vị trí bit 1 đầu tiên, tính từ bit 0 |
+| `0x0006` | `output_1` | vị trí bit 1 đầu tiên, tính từ bit 0 |
+| `0x0007` | `output_2` | vị trí bit 1 đầu tiên, tính từ bit 0 |
+| `0x0009` | `error_code` | vị trí bit 1 đầu tiên, tính từ bit 0 |
+| `0x0020` | `turbidity` | raw |
+| `0x0021` | `temp_data_1` | raw |
+| `0x0022` | `temp_data_2` | raw |
+| `0x0023` | `temp_data_3` | raw |
+
+Ví dụ `0x0004` có bit 2 bật nên thiết bị gửi giá trị `2`. Nếu nhiều bit cùng bật, code hiện tại chỉ lấy bit có chỉ số nhỏ nhất.
+
+Các frame mẫu:
+
+```text
+:021000000008100046002D000B03E8004D0004000200100A\r\n
+:021000200004080014000100020003A8\r\n
+:02100009000102000AD8\r\n
 ```
 
-Giá trị là phần trăm PWM, thường trong khoảng `0..100`.
+Hai frame dữ liệu đầu tạo ra các giá trị `ph1=7.0`, `ph2=4.5`, `do=11`, `ozone=1000`, `pressure_o2=77`, `input_x=2`, `output_1=1`, `output_2=4`, `turbidity=20` và ba trường dự phòng `1, 2, 3`. Frame cuối cập nhật `error_code=1` vì `0x000A` có bit 1 và bit 3 bật.
 
-### 4.7. MQTT broker và topic
+### Timeout PLC
 
-```c
-#define FARM "mobi/water"
-#define MQTT_USER "<mqtt_user>"
-#define MQTT_PASS "<mqtt_password>"
-#define MQTT_BROKER_HOST "42.1.65.138"
-#define MQTT_HOST "tcp://" MQTT_BROKER_HOST
-#define MQTT_PORT 1883
+Mỗi frame hợp lệ reset bộ đếm timeout. Trong thời gian chưa quá `PLC_RS485_TIMEOUT_SEC`, thiết bị tiếp tục publish giá trị gần nhất. Khi quá 300 giây không có frame hợp lệ:
+
+- PLC được đánh dấu offline.
+- Tất cả cờ `has_*` bị xóa.
+- Telemetry và JSON gửi LCD dùng `null` cho các trường PLC.
+- Log xuất hiện một lần: `PLC RS485 timeout: no data for 300 seconds`.
+
+## MQTT
+
+Topic được tạo từ:
+
+```text
+<FARM>/<SERIAL_NUMBER>/<suffix>
 ```
 
-Điền user/password theo tài khoản MQTT được cấp cho hệ thống triển khai.
+Với `FARM=mobi/water` và `SERIAL_NUMBER=wb000002`, các topic là:
 
-Topic được tạo tự động từ `FARM` và `SERIAL_NUMBER`:
+| Topic | Hướng | QoS | Retain | Mục đích |
+|---|---|---:|---:|---|
+| `mobi/water/wb000002/status` | Device -> Server | 0 | 1 | Online/offline và Last Will |
+| `mobi/water/wb000002/telemetry` | Device -> Server | 0 | 0 | Dữ liệu cảm biến định kỳ |
+| `mobi/water/wb000002/config/state` | Device -> Server | 0 | 1 | Chu kỳ cấu hình hiện tại |
+| `mobi/water/wb000002/config/response` | Device -> Server | 0 | 0 | API response đã có, chưa được gọi trong luồng hiện tại |
+| `mobi/water/wb000002/command/response` | Device -> Server | 0 | 0 | API response đã có, chưa được gọi trong luồng hiện tại |
+| `mobi/water/wb000002/config/set` | Server -> Device | 0 | - | Đã subscribe; chưa có parser cấu hình MQTT hoàn chỉnh |
+| `mobi/water/wb000002/config/get` | Server -> Device | 0 | - | Đã subscribe; chưa có handler phản hồi hoàn chỉnh |
+| `mobi/water/wb000002/command/request` | Server -> Device | 0 | - | Lệnh điều khiển và kích hoạt OTA |
 
-```c
-#define MQTT_TOPIC_TELEMETRY FARM "/" SERIAL_NUMBER "/telemetry"
-#define MQTT_TOPIC_STATUS FARM "/" SERIAL_NUMBER "/status"
-#define MQTT_TOPIC_CONFIG_SET FARM "/" SERIAL_NUMBER "/config/set"
-#define MQTT_TOPIC_CONFIG_GET FARM "/" SERIAL_NUMBER "/config/get"
-#define MQTT_TOPIC_CONFIG_STATE FARM "/" SERIAL_NUMBER "/config/state"
-#define MQTT_TOPIC_CONFIG_RESPONSE FARM "/" SERIAL_NUMBER "/config/response"
-#define MQTT_TOPIC_COMMAND_REQUEST FARM "/" SERIAL_NUMBER "/command/request"
-#define MQTT_TOPIC_COMMAND_RESPONSE FARM "/" SERIAL_NUMBER "/command/response"
+### Telemetry payload
+
+```json
+{
+  "device_id": "wb000002",
+  "firmware_version": "3.1",
+  "ph1": 7.0,
+  "do": 11.0,
+  "ph2": 4.5,
+  "turbidity": 20.0,
+  "ozone": 1000.0,
+  "pressure_o2": 77.0,
+  "temp_data_1": 1.0,
+  "temp_data_2": 2.0,
+  "temp_data_3": 3.0,
+  "input_x": 2,
+  "output_1": 1,
+  "output_2": 4,
+  "error_code": 1,
+  "rssi": -51
+}
 ```
 
-Ví dụ với `SERIAL_NUMBER = "wb000001"`:
+Các trường PLC có thể là `null`. `rssi` là dBm được quy đổi từ `AT+CSQ`.
 
-- Publish telemetry: `mobi/water/wb000001/telemetry`
-- Publish status: `mobi/water/wb000001/status`
-- Subscribe config/command: `mobi/water/wb000001/config/set`, `mobi/water/wb000001/config/get`, `mobi/water/wb000001/command/request`
+### Status và config state
 
-## 5. Chế độ điều khiển bơm
+Online:
 
-Firmware hiện được cấu hình để bơm chỉ chạy theo lệnh MQTT nhận từ UART1.
-
-Trong `Core/Inc/main.h`:
-
-```c
-#define PH_PUMP_SCHEDULE_ENABLE 0
+```json
+{"device_id":"wb000002","status":"online","firmware_version":"3.1","rssi":-51}
 ```
 
-Ý nghĩa:
+Last Will/offline:
 
-- `0`: tắt lịch bơm pH tự động. Bơm chỉ chạy theo lệnh MQTT từ UART1.
-- `1`: bật lại lịch bơm tự động theo pH, `time_on`, `time_off`, `pump_power`, `control_mode`.
+```json
+{"device_id":"wb000002","status":"offline"}
+```
 
-Khi `PH_PUMP_SCHEDULE_ENABLE = 0`, callback TIM6 vẫn dùng để đếm chu kỳ publish data, nhưng không gọi `ph_pump_isr_tick_1s(...)` để tự điều khiển bơm.
+Config state:
 
-## 6. Build firmware
+```json
+{"device_id":"wb000002","telemetry_interval_s":15,"sensor_sample_interval_s":10}
+```
 
-### Build bằng STM32CubeIDE
+## Màn hình UART5
 
-1. Import project vào STM32CubeIDE.
-2. Chọn build configuration `Debug`.
-3. Nhấn `Project -> Build Project`.
-4. File output sau build:
+Cứ khoảng 6 giây, firmware tạo cùng cấu trúc JSON telemetry và gửi qua UART5. Hàm gửi tự bổ sung `\r\n` nếu payload chưa có kết thúc dòng.
+
+RSSI trong bản LCD dùng giá trị gần nhất và không gọi lại `AT+CSQ`. JSON được chứa trong buffer 700 byte.
+
+## OTA qua GitHub
+
+### Kích hoạt
+
+Server publish lên topic:
+
+```text
+mobi/water/<SERIAL_NUMBER>/command/request
+```
+
+Payload chỉ cần chứa một trong hai chuỗi:
+
+```text
+ota_check
+ota_update
+```
+
+Hai chuỗi hiện có cùng hành vi: nếu manifest có phiên bản lớn hơn `VERSION_WBEE`, thiết bị tải và chuẩn bị cài firmware.
+
+### Manifest
+
+`ota/manifest.json` gồm:
+
+```json
+{
+  "version": "3.0",
+  "device": "wbee-stm32f103ret6",
+  "app_addr": "0x08008000",
+  "size": 75184,
+  "crc32": "0xCE898D61",
+  "bin_url": "https://raw.githubusercontent.com/.../ota/wbee_v3.0.bin"
+}
+```
+
+`size` là số byte chính xác của file BIN. Thiết bị kiểm tra `device`, địa chỉ application, giới hạn vùng Flash, HTTP content length và CRC32 trước khi ghi metadata pending.
+
+### Bố trí Flash
+
+| Vùng | Địa chỉ | Kích thước |
+|---|---:|---:|
+| Bootloader | `0x08000000` | 32 KiB |
+| Application | `0x08008000` | tối đa 224 KiB |
+| OTA staging | `0x08040000` | 252 KiB |
+| OTA metadata | `0x0807F000` | 2 KiB |
+| Config | `0x0807F800` | 2 KiB |
+
+Sau khi download thành công, application reset MCU. Bootloader kiểm tra metadata và CRC, xóa vùng application, sao chép firmware từ staging sang `0x08008000`, kiểm tra lại CRC và vector table, xóa metadata rồi nhảy vào application.
+
+## Build và nạp lần đầu
+
+### Application
+
+Import project vào STM32CubeIDE và build `Debug` hoặc `Release`. Cả hai cấu hình hiện dùng:
+
+```text
+STM32F103RETX_OTA_APP.ld
+```
+
+Output chính:
 
 ```text
 Debug/wbee_stm32f103ret6.elf
-Debug/wbee_stm32f103ret6.map
-Debug/wbee_stm32f103ret6.list
+Debug/wbee_stm32f103ret6.hex
 ```
 
-### Build bằng terminal
+Có thể build bằng terminal nếu toolchain đã sẵn sàng:
 
-Nếu đã có `make` và `arm-none-eabi-gcc` trong PATH:
-
-```bash
-make -C Debug
-```
-
-Clean build:
-
-```bash
+```powershell
 make -C Debug clean
 make -C Debug
 ```
 
-## 7. Nạp code vào STM32
+### Bootloader
 
-### Cách 1: nạp bằng STM32CubeIDE
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/build_bootloader.ps1
+```
 
-1. Kết nối ST-LINK với board STM32.
-2. Cấp nguồn cho board.
-3. Mở project trong STM32CubeIDE.
-4. Chọn `Run -> Debug Configurations`.
-5. Chọn cấu hình debug của project.
-6. Nhấn `Debug` hoặc `Run`.
-
-STM32CubeIDE sẽ build và nạp file `.elf` xuống MCU.
-
-### Cách 2: nạp bằng STM32CubeProgrammer
-
-1. Build project để tạo file `Debug/wbee_stm32f103ret6.elf`.
-2. Mở STM32CubeProgrammer.
-3. Chọn kết nối `ST-LINK`.
-4. Nhấn `Connect`.
-5. Chọn file `.elf`.
-6. Nhấn `Download`.
-7. Reset board sau khi nạp.
-
-## 8. UART và kết nối ngoại vi
-
-Các UART chính trong firmware:
-
-- `USART1`: giao tiếp SIMCOM, nhận phản hồi modem và payload MQTT.
-- `USART2`: đọc dữ liệu sensor Fuvitech/Rika tùy cấu hình.
-- `UART4`: sensor pH.
-- `UART5`: giao tiếp màn hình/ESP32, gửi dữ liệu hiển thị và nhận cấu hình JSON nếu bật xử lý.
-
-Luồng MQTT chính:
-
-1. STM32 bật SIMCOM.
-2. Chờ modem sẵn sàng.
-3. Kiểm tra SIM/network.
-4. Kết nối MQTT broker.
-5. Subscribe topic điều khiển.
-6. Nhận lệnh MQTT qua UART1.
-7. Điều khiển PWM motor và publish trạng thái.
-
-## 9. Lệnh điều khiển motor qua MQTT
-
-Firmware subscribe topic:
+Output:
 
 ```text
-<FARM>/<SERIAL_NUMBER>/config/set
-<FARM>/<SERIAL_NUMBER>/config/get
-<FARM>/<SERIAL_NUMBER>/command/request
+Bootloader/build/wbee_bootloader.hex
 ```
 
-Với cấu hình mặc định:
+Lần nạp nhà máy:
 
-```text
-mobi/water/wb000001/config/set
-mobi/water/wb000001/config/get
-mobi/water/wb000001/command/request
+1. Nạp `Bootloader/build/wbee_bootloader.hex` bằng STM32CubeProgrammer.
+2. Nạp application đã liên kết tại `0x08008000`.
+3. Reset thiết bị và kiểm tra log kết nối SIMCOM/MQTT.
+
+Không dùng `STM32F103RETX_FLASH.ld` cho firmware OTA vì linker đó đặt application tại `0x08000000`, chồng lên bootloader.
+
+## Phát hành OTA
+
+1. Tăng `VERSION_WBEE` trong `Core/Inc/config.h`.
+2. Clean và build lại application.
+3. Tạo BIN và manifest bằng đúng phiên bản vừa compile:
+
+```powershell
+python tools/prepare_ota_manifest.py `
+  --firmware Debug/wbee_stm32f103ret6.hex `
+  --version 3.2
 ```
 
-Payload/topic được xử lý trong `Core/Src/convert_data_uart.c`. Các motor đang được map:
+4. Commit và push đồng thời `ota/wbee_v3.2.bin` cùng `ota/manifest.json`.
+5. Mở raw URL để xác nhận manifest và BIN đã tồn tại.
+6. Publish lệnh OTA qua MQTT.
+7. Sau reboot, kiểm tra `firmware_version` trong telemetry.
 
-- Motor `1`: pH plus, PWM TIM2 CH4.
-- Motor `2`: pH minus, PWM TIM2 CH3.
-- Motor `3`: motor X, PWM TIM2 CH1.
+Tham số `--version` chỉ đặt tên file và ghi manifest; nó không thay đổi `VERSION_WBEE` đã compile trong firmware. Luôn clean/build sau khi đổi phiên bản.
 
-Trạng thái motor được publish dạng JSON:
+## Cấu trúc source
 
-```json
-{"1":0,"2":0,"3":0}
-```
+| File/thư mục | Trách nhiệm |
+|---|---|
+| `Core/Src/main.c` | Khởi tạo phần cứng, timer và vòng lặp chính |
+| `Core/Src/common_simcom.c` | State machine SIMCOM và điều phối publish |
+| `Core/Src/mobi_mqtt.c` | MQTT topic, JSON và AT command MQTT |
+| `Core/Src/plc_rs485.c` | Decode Modbus ASCII, LRC, mapping register và timeout |
+| `Core/Src/convert_data_uart.c` | Callback UART, dữ liệu SIMCOM, PLC, LCD và trigger OTA |
+| `Core/Src/ota_update.c` | HTTP GitHub, kiểm tra manifest/BIN và ghi staging |
+| `Bootloader/bootloader_main.c` | Cài image pending và nhảy vào application |
+| `Core/Src/sensor.c` | Đọc cảm biến trực tiếp khi không dùng PLC |
+| `Core/Src/update_data_sreen.c` | Hỗ trợ giao tiếp màn hình |
+| `Core/Inc/config.h` | Cấu hình build chính |
 
-## 10. Cấu hình JSON từ UART5
+## Tài liệu chi tiết
 
-Firmware có parser JSON cho cấu hình pH:
+- [MQTT và dữ liệu](docs/iot/wbee/implementation.md)
+- [Luồng hoạt động](docs/iot/wbee/flow.md)
+- [Lỗi và tình huống biên](docs/iot/wbee/exceptions.md)
 
-```json
-{
-  "ph_high": 7.5,
-  "ph_low": 6.0,
-  "time_off": 10,
-  "time_on": 5,
-  "pump_power": 50,
-  "control_mode": 0
-}
-```
+## Hạn chế hiện tại
 
-Trong code hiện tại, `process_uart_rx()` đang được comment trong `main.c`, nên cấu hình JSON UART5 chưa được xử lý ở vòng lặp chính. Nếu cần dùng lại phần này, bật lại lời gọi `process_uart_rx()` trong `while (1)` hoặc vị trí phù hợp.
-
-## 11. Checklist trước khi triển khai
-
-Trước khi nạp thiết bị mới:
-
-1. Chọn đúng `SIMCOM_MODEL`.
-2. Đổi đúng `SERIAL_NUMBER`.
-3. Kiểm tra `FARM`, `MQTT_USER`, `MQTT_PASS`, `MQTT_HOST`, `MQTT_PORT`.
-4. Chọn đúng loại sensor.
-5. Kiểm tra `INTERVAL_PUPLISH_DATA`.
-6. Kiểm tra `PH_PUMP_SCHEDULE_ENABLE`.
-7. Build không lỗi.
-8. Nạp firmware.
-9. Kiểm tra log UART/SWO nếu cần debug.
-10. Kiểm tra thiết bị đã subscribe đúng topic MQTT.
-
-## 12. Ghi chú bảo trì
-
-- Không sửa trực tiếp các file trong `Drivers/` nếu không thật sự cần.
-- Khi đổi cấu hình pin/peripheral trong `.ioc`, cần generate lại code bằng STM32CubeMX/STM32CubeIDE và kiểm tra các vùng `USER CODE`.
-- Các thông tin nhạy cảm như MQTT user/password nên được quản lý cẩn thận khi đưa project lên repository công khai.
-- Nếu bật lại lịch bơm tự động, cần test kỹ tương tác giữa lịch tự động và lệnh MQTT để tránh hai luồng cùng điều khiển PWM.
+- Parser PLC xử lý dữ liệu của từng callback UART; chưa có bộ đệm ghép một frame bị chia qua nhiều callback.
+- Các topic `config/set` và `config/get` đã subscribe nhưng chưa có parser MQTT hoàn chỉnh.
+- Điều khiển motor vẫn dựa vào vị trí ký tự trong phản hồi SIMCOM, chưa parse topic/payload bằng JSON.
+- `ota_check` và `ota_update` chưa được tách thành check-only và update.
+- Không có rollback tự động nếu application mới hợp lệ về vector/CRC nhưng lỗi khi chạy.
+- MQTT cổng 1883 và HTTPS OTA đang cấu hình SIMCOM với xác thực chứng chỉ bị tắt.
